@@ -267,5 +267,10 @@ int eap_register_methods(void)
 		ret = eap_server_pwd_register();
 #endif /* EAP_SERVER_PWD */
 
+#ifdef EAP_NOOB
+    if (ret == 0)
+        ret = eap_peer_noob_register();
+#endif /* EAP_NOOB */
+
 	return ret;
 }

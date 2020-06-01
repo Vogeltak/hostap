@@ -151,5 +151,10 @@ int eap_server_register_methods(void)
 		ret = eap_server_eke_register();
 #endif /* EAP_SERVER_EKE */
 
+#ifdef EAP_SERVER_NOOB
+	if (ret == 0)
+		ret = eap_server_noob_register();
+#endif /* EAP_SERVER_NOOB */
+
 	return ret;
 }

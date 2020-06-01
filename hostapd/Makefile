@@ -512,6 +512,14 @@ NEED_TLS_PRF_SHA384=y
 NEED_AES_UNWRAP=y
 endif
 
+ifdef CONFIG_EAP_NOOB
+CFLAGS += -DEAP_SERVER_NOOB
+OBJS += ../src/eap_server/eap_server_noob.o
+LIBS += -lsqlite3
+NEED_JSON=y
+CHAP=y
+endif
+
 ifdef CONFIG_WPS
 CFLAGS += -DCONFIG_WPS -DEAP_SERVER_WSC
 OBJS += ../src/utils/uuid.o
