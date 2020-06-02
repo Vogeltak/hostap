@@ -28,6 +28,8 @@
  *  See CONTRIBUTORS for more information.
  */
 
+#include "includes.h"
+
 #include <openssl/err.h>
 #include <openssl/rand.h>
 #include <openssl/obj_mac.h>
@@ -1275,7 +1277,7 @@ int eap_noob_db_entry_check(void * priv , int argc, char **argv, char **azColNam
     struct eap_noob_server_data * data = priv;
 
     if (strtol(argv[0],NULL,10) == 1) {
-        data->record_present = TRUE;
+        data->record_present = true;
     }
     return 0;
 }
@@ -2557,14 +2559,14 @@ static struct wpabuf * eap_noob_process(struct eap_sm * sm, void * priv, struct 
 
     pos = eap_hdr_validate(EAP_VENDOR_IETF, EAP_TYPE_NOOB, reqData, &len);
     if (pos == NULL || len < 1) {
-        ret->ignore = TRUE;
+        ret->ignore = true;
         return NULL;
     }
  /**
  * https://tools.ietf.org/html/rfc4137 Not dropping packets if header is valid.
  * Consider using this for Error messages received when not expected.
 **/
-    ret->ignore = FALSE;
+    ret->ignore = false;
 
     ret->methodState = METHOD_CONT;
     ret->decision = DECISION_FAIL;
@@ -2573,7 +2575,7 @@ static struct wpabuf * eap_noob_process(struct eap_sm * sm, void * priv, struct 
  * https://tools.ietf.org/html/rfc3748 EAP-NOOB does not use
  * or handle EAP Notificiation type messages.
 **/
-    ret->allowNotifications = FALSE;
+    ret->allowNotifications = false;
 
     wpa_printf(MSG_DEBUG, "EAP-NOOB: Received Request = %s", pos);
     req_obj = json_parse((char *) pos, os_strlen((char *) pos));
@@ -3156,10 +3158,10 @@ static void * eap_noob_init(struct eap_sm * sm)
  * @priv : eap noob data
  * Returns : TRUE/FALSE
 */
-static Boolean eap_noob_isKeyAvailable(struct eap_sm *sm, void *priv)
+static bool eap_noob_isKeyAvailable(struct eap_sm *sm, void *priv)
 {
     struct eap_noob_peer_context * data = priv;
-    Boolean retval = ((data->server_attr->state == REGISTERED_STATE) && (data->server_attr->kdf_out->msk != NULL));
+    bool retval = ((data->server_attr->state == REGISTERED_STATE) && (data->server_attr->kdf_out->msk != NULL));
     wpa_printf(MSG_DEBUG, "EAP-NOOB: State = %d, Key Available? %d", data->server_attr->state, retval);
     return retval;
 }
@@ -3271,7 +3273,7 @@ static void * eap_noob_init_for_reauth(struct eap_sm * sm, void * priv)
  * @sm : eap statemachine context
  * @priv : eap noob data
  */
-static Boolean eap_noob_has_reauth_data(struct eap_sm * sm, void * priv)
+static bool eap_noob_has_reauth_data(struct eap_sm * sm, void * priv)
 {
     struct eap_noob_peer_context * data = priv;
     struct wpa_supplicant * wpa_s = (struct wpa_supplicant *) sm->msg_ctx;
@@ -3285,10 +3287,10 @@ static Boolean eap_noob_has_reauth_data(struct eap_sm * sm, void * priv)
             data->peer_attr->Realm = os_strdup(DEFAULT_REALM);
         wpa_printf(MSG_DEBUG, "EAP-NOOB: Peer ID and Realm Reauth, %s %s", data->peer_attr->PeerId, data->peer_attr->Realm);
         eap_noob_config_change(sm, data); eap_noob_db_update(data, UPDATE_PERSISTENT_STATE);
-        return TRUE;
+        return true;
     }
     wpa_printf(MSG_DEBUG, "EAP-NOOB: Returning False, %s", __func__);
-    return FALSE;
+    return false;
 }
 
 /**

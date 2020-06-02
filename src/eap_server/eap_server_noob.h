@@ -299,8 +299,8 @@ struct eap_noob_peer_data {
     char * peer_snum;  /* Only set, not used */
     char * mac;
 
-    Boolean record_present;
-    Boolean noobid_required;
+    bool record_present;
+    bool noobid_required;
 
     enum eap_noob_err_code err_code;
 

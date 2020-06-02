@@ -310,7 +310,7 @@ struct eap_noob_server_data {
     char * mac_input_str;
 
     enum eap_noob_err_code err_code;
-    Boolean record_present;
+    bool record_present;
 
     struct eap_noob_ecdh_key_exchange * ecdh_exchange_data;
     struct eap_noob_oob_data * oob_data;

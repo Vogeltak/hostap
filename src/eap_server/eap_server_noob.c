@@ -2195,11 +2195,11 @@ static _Bool eap_noob_check(struct eap_sm * sm, void * priv,
     const u8 * pos = NULL;
     u32 state = 0;
     size_t len = 0;
-    Boolean ret = FALSE;
+    bool ret = false;
 
     if (!priv || !sm || !respData) {
         wpa_printf(MSG_DEBUG, "EAP-NOOB: Input to %s is null", __func__);
-        ret = TRUE;
+        ret = true;
         goto EXIT;
     }
 
@@ -2224,13 +2224,13 @@ static _Bool eap_noob_check(struct eap_sm * sm, void * priv,
         } else {
             wpa_printf(MSG_DEBUG, "EAP-NOOB: Request with unknown message type");
             eap_noob_set_error(data->peer_attr, E1002);
-            ret = TRUE;
+            ret = true;
             goto EXIT;
         }
     } else {
         wpa_printf(MSG_DEBUG, "EAP-NOOB: Request with unknown format received");
         eap_noob_set_error(data->peer_attr, E1002);
-        ret = TRUE;
+        ret = true;
         goto EXIT;
     }
 
@@ -2248,7 +2248,7 @@ static _Bool eap_noob_check(struct eap_sm * sm, void * priv,
             state, data->peer_attr->recv_msg,
             state_message_check[state][data->peer_attr->recv_msg]);
         eap_noob_set_error(data->peer_attr,E1004);
-        ret = TRUE;
+        ret = true;
         goto EXIT;
     }
 
