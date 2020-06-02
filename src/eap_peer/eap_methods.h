@@ -109,6 +109,6 @@ int eap_peer_vendor_test_register(void);
 int eap_peer_tnc_register(void);
 int eap_peer_pwd_register(void);
 int eap_peer_eke_register(void);
-int eap_peer_noob_reigster(void);
+int eap_peer_noob_register(void);
 
 #endif /* EAP_METHODS_H */

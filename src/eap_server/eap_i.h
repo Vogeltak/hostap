@@ -106,7 +106,7 @@ struct radius_attr_eap {
 	char *calledSID;
 	char *callingSID;
 	char *nasId;
-}
+};
 
 /**
  * struct eap_sm - EAP server state machine data

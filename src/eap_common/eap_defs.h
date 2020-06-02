@@ -93,6 +93,7 @@ enum eap_type {
 	EAP_TYPE_PWD = 52 /* RFC 5931 */,
 	EAP_TYPE_EKE = 53 /* RFC 6124 */,
 	EAP_TYPE_TEAP = 55 /* RFC 7170 */,
+    EAP_TYPE_NOOB = 90 /* draft-ietf-emu-eap-noob-01.txt */,
 	EAP_TYPE_EXPANDED = 254 /* RFC 3748 */
 };
 

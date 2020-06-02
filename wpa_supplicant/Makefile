@@ -760,7 +760,8 @@ CFLAGS += -DINT_DISP="\"eth0\""
 EAPDYN += ../src/eap_peer/eap_noob.so
 else
 CFLAGS += -DEAP_NOOB
-CFLAGS += -DINT_DISP="\eth0\""
+CFLAGS += -DINT_DISP="\"eth0\""
+OBJS += ../src/eap_peer/eap_noob.o
 endif
 LIBS += -lsqlite3
 NEED_JSON=y

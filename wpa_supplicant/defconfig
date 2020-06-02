@@ -166,6 +166,9 @@ CONFIG_EAP_GPSK_SHA256=y
 # EAP-TNC and related Trusted Network Connect support (experimental)
 CONFIG_EAP_TNC=y
 
+# EAP-NOOB
+#CONFIG_EAP_NOOB=y
+
 # Wi-Fi Protected Setup (WPS)
 CONFIG_WPS=y
 # Enable WPS external registrar functionality
