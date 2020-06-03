@@ -410,14 +410,16 @@ static int eap_noob_encode_vers_cryptosuites(struct eap_noob_peer_context * data
     // Populate the vers array
     json_start_array(vers, NULL);
     for (int i = 0; i < MAX_SUP_VER; i++) {
-        wpabuf_printf(vers, "%s%u", i ? "," : "", data->server_attr->version[i]);
+        if (data->server_attr->version[i] > 0)
+            wpabuf_printf(vers, "%s%u", i ? "," : "", data->server_attr->version[i]);
     }
     json_end_array(vers);
 
     // Populate the cryptosuites array
     json_start_array(cryptosuites, NULL);
     for (int i = 0; i < MAX_SUP_CSUITES; i++) {
-        wpabuf_printf(cryptosuites, "%s%u", i ? "," : "", data->server_attr->cryptosuite[i]);
+        if (data->server_attr->cryptosuite[i] > 0)
+            wpabuf_printf(cryptosuites, "%s%u", i ? "," : "", data->server_attr->cryptosuite[i]);
     }
     json_end_array(cryptosuites);
 
@@ -546,7 +548,8 @@ static char * eap_noob_build_mac_input(const struct eap_noob_peer_context * data
     json_value_sep(mac_json);
     json_start_array(mac_json, NULL);
     for (int i = 0; i < MAX_SUP_VER; i++) {
-        wpabuf_printf(mac_json, "%s%u", i ? "," : "", data->server_attr->version[i]);
+        if (data->server_attr->version[i] > 0)
+            wpabuf_printf(mac_json, "%s%u", i ? "," : "", data->server_attr->version[i]);
     }
     json_end_array(mac_json);
 
@@ -560,7 +563,8 @@ static char * eap_noob_build_mac_input(const struct eap_noob_peer_context * data
     json_value_sep(mac_json);
     json_start_array(mac_json, NULL);
     for (int i = 0; i < MAX_SUP_CSUITES; i++) {
-        wpabuf_printf(mac_json, "%s%u", i ? "," : "", data->server_attr->cryptosuite[i]);
+        if (data->server_attr->cryptosuite[i] > 0)
+            wpabuf_printf(mac_json, "%s%u", i ? "," : "", data->server_attr->cryptosuite[i]);
     }
     json_end_array(mac_json);
 
@@ -1105,7 +1109,7 @@ static void eap_noob_decode_obj(struct eap_noob_server_data * data, struct json_
                     }
                 }
                 // NoobId
-                else if (!os_strcmp(key, HINT_SERV)) {
+                else if (!os_strcmp(key, NOOBID)) {
                     data->oob_data->NoobId_b64 = os_strdup(val_str);
                     wpa_printf(MSG_DEBUG, "EAP-NOOB: Received NoobId = %s", data->oob_data->NoobId_b64);
                     data->rcvd_params |= HINT_RCVD;
@@ -1895,7 +1899,7 @@ static struct wpabuf * eap_noob_rsp_type_eight(const struct eap_noob_peer_contex
     struct wpabuf * resp = NULL;
     char * json_str = NULL;
     size_t len = 100 + strlen(TYPE) + strlen(PEERID) + MAX_PEER_ID_LEN
-        + strlen(HINT_PEER) + NOOBID_LEN;
+        + strlen(NOOBID) + NOOBID_LEN;
 
     wpa_printf(MSG_DEBUG, "EAP-NOOB: Building message response type 8");
 
@@ -1914,7 +1918,7 @@ static struct wpabuf * eap_noob_rsp_type_eight(const struct eap_noob_peer_contex
     json_value_sep(json);
     json_add_string(json, PEERID, data->server_attr->PeerId);
     json_value_sep(json);
-    json_add_string(json, HINT_PEER, data->server_attr->oob_data->NoobId_b64);
+    json_add_string(json, NOOBID, data->server_attr->oob_data->NoobId_b64);
     json_end_object(json);
 
     wpa_printf(MSG_DEBUG, "EAP-NOOB: Hint is %s", data->server_attr->oob_data->NoobId_b64);
@@ -2981,7 +2985,7 @@ static int eap_noob_read_config(struct eap_sm *sm,struct eap_noob_peer_context *
     fclose(conf_file);
 
     if ((data->peer_attr->version >MAX_SUP_VER) || (data->peer_attr->cryptosuite > MAX_SUP_CSUITES) ||
-        (data->peer_attr->dir > BOTH_DIR)) {
+        (data->peer_attr->dir > BOTH_DIRECTIONS)) {
         wpa_printf(MSG_ERROR, "EAP-NOOB: Incorrect confing value");
         return FAILURE;
     }

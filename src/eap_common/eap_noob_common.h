@@ -9,13 +9,14 @@
  */
 
 #define DB_NAME                 "/tmp/eap_noob.db"
-#define RESERVED_DOMAIN         "eap-noob.net"
+#define DEFAULT_REALM           "eap-noob.net"
 #define VERSION_ONE             1
 #define SUITE_ONE               1
 #define ALGORITHM_ID            "EAP-NOOB"
 #define ALGORITHM_ID_LEN        8
 #define MACS_TYPE               2
 #define MACP_TYPE               1
+#define FORMAT_BASE64URL        1
 
 /* Maximum values for fields */
 #define MAX_SUP_VER             3
@@ -26,6 +27,7 @@
 #define MAX_LINE_SIZE           1000
 #define MAX_MAC_INPUT_LEN       1500
 #define MAX_X25519_LEN          48
+#define MAX_URL_LEN             60
 
 #define NOOBID_LEN              16
 #define NOOB_LEN                16
@@ -106,39 +108,7 @@
 /* TODO: explanatory comment */
 #define ECDH_KDF_MAX            (1 << 30)
 
-/* Bitmasks signalling which parameters were received */
-#define PEERID_RCVD             0x0001
-#define DIRP_RCVD               0x0002
-#define CRYPTOSUITEP_RCVD       0x0004
-#define VERSION_RCVD            0x0008
-#define NONCE_RCVD              0x0010
-#define MAC_RCVD                0x0020
-#define PKEY_RCVD               0x0040
-#define INFO_RCVD               0x0080
-#define STATE_RCVD              0x0100
-#define MINSLP_RCVD             0x0200
-#define SERVER_NAME_RCVD        0x0400
-#define SERVER_URL_RCVD         0x0800
-#define NOOBID_RCVD             0x1000
-#define WE_COUNT_RCVD           0x2000
-#define REALM_RCVD              0x4000
-#define ENCODE_RCVD             0x8000
-#define MAX_OOB_RETRIES_RCVD   0x10000
-
-/* Bitmasks representing the expected combination of parameters
- * to be received for every message type */
-#define TYPE_ONE_PARAMS         (PEERID_RCVD|VERSION_RCVD|CRYPTOSUITEP_RCVD|DIRP_RCVD|INFO_RCVD)
-#define TYPE_TWO_PARAMS         (PEERID_RCVD|NONCE_RCVD|PKEY_RCVD)
-#define TYPE_THREE_PARAMS       (PEERID_RCVD)
-#define TYPE_FOUR_PARAMS        (PEERID_RCVD|MAC_RCVD)
-#define TYPE_FIVE_PARAMS        (PEERID_RCVD|CRYPTOSUITEP_RCVD|INFO_RCVD)
-#define TYPE_SIX_PARAMS         (PEERID_RCVD|NONCE_RCVD)
-#define TYPE_SEVEN_PARAMS       (PEERID_RCVD|MAC_RCVD)
-#define TYPE_EIGHT_PARAMS       (PEERID_RCVD|NOOBID_RCVD)
-
 #define CONF_PARAMS             (DIRP_RCVD|CRYPTOSUITEP_RCVD|VERSION_RCVD|SERVER_NAME_RCVD|SERVER_URL_RCVD|WE_COUNT_RCVD|REALM_RCVD|ENCODE_RCVD|MAX_OOB_RETRIES_RCVD)
-
-/* TODO: DB queries */
 
 #define EAP_NOOB_FREE(_D)                           \
     if (_D) {                                       \

@@ -473,7 +473,7 @@ static int eap_noob_parse_NAI(struct eap_noob_server_context * data, const char 
 
     _NAI = (char *)NAI;
 
-    if (os_strstr(_NAI, RESERVED_DOMAIN) || os_strstr(_NAI, server_conf.realm)) {
+    if (os_strstr(_NAI, DEFAULT_REALM) || os_strstr(_NAI, server_conf.realm)) {
         user_name_peer = strsep(&_NAI, "@");
         realm = strsep(&_NAI, "@");
 
@@ -492,13 +492,13 @@ static int eap_noob_parse_NAI(struct eap_noob_server_context * data, const char 
         // previously conducted tests.
         if (0 == strcmp(realm, server_conf.realm)) {
             return SUCCESS;
-        } else if (0 == strcmp("noob", user_name_peer) && 0 == strcmp(realm, RESERVED_DOMAIN)) {
+        } else if (0 == strcmp("noob", user_name_peer) && 0 == strcmp(realm, DEFAULT_REALM)) {
             data->peer_attr->peer_state = UNREGISTERED_STATE;
             return SUCCESS;
         }
     }
 
-    // NAI realm is neither the RESERVED_DOMAIN nor the configured realm
+    // NAI realm is neither the DEFAULT_REALM nor the configured realm
     wpa_printf(MSG_DEBUG, "EAP-NOOB: Exiting %s, setting error E1001",__func__);
     eap_noob_set_error(data->peer_attr, E1001);
     return FAILURE;
@@ -722,7 +722,7 @@ static int eap_noob_handle_incomplete_conf(struct eap_noob_server_context * data
         server_conf.max_we_count = MAX_WAIT_EXCHNG_TRIES;
 
     if (0 == (data->server_attr->config_params & REALM_RCVD))
-        server_conf.realm = os_strdup(RESERVED_DOMAIN);
+        server_conf.realm = os_strdup(DEFAULT_REALM);
 
     return SUCCESS;
 }
@@ -1664,7 +1664,7 @@ static struct wpabuf * eap_noob_req_type_five(struct eap_noob_server_context * d
         }
     }
     json_end_array(json);
-    if (strcmp(server_conf.realm, RESERVED_DOMAIN)) {
+    if (strcmp(server_conf.realm, DEFAULT_REALM)) {
         json_add_string(json, REALM, server_conf.realm);
     } else {
         json_add_string(json, REALM, "");
@@ -1996,7 +1996,7 @@ static struct wpabuf * eap_noob_req_type_one(struct eap_noob_server_context * da
     json_value_sep(json);
     json_add_string(json, PEERID, data->peer_attr->PeerId);
     json_value_sep(json);
-    if (strcmp(server_conf.realm, RESERVED_DOMAIN)) {
+    if (strcmp(server_conf.realm, DEFAULT_REALM)) {
         json_add_string(json, REALM, server_conf.realm);
     } else {
         json_add_string(json, REALM, "");
