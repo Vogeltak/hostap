@@ -51,6 +51,7 @@
 #include "crypto/crypto.h"
 #include "eap_i.h"
 #include "eap_server_noob.h"
+#include "eap_common/eap_noob_common.h"
 
 static struct eap_noob_global_conf server_conf;
 
@@ -260,7 +261,7 @@ static int eap_noob_exec_query(struct eap_noob_server_context * data, const char
     u8 * bval = NULL;
 
     wpa_printf(MSG_DEBUG, "EAP-NOOB: Entering %s, query - (%s), Number of arguments (%d)", __func__, query, num_args);
-    if (SQLITE_OK != (ret = sqlite3_prepare_v2(data->server_db, query, strlen(query)+1, &stmt, NULL))) {
+    if (SQLITE_OK != (ret = sqlite3_prepare_v2(data->db, query, strlen(query)+1, &stmt, NULL))) {
         wpa_printf(MSG_DEBUG, "EAP-NOOB: Error preparing statement, ret (%d)", ret);
         ret = FAILURE; goto EXIT;
     }
@@ -315,7 +316,7 @@ static int eap_noob_exec_query(struct eap_noob_server_context * data, const char
 EXIT:
     wpa_printf(MSG_DEBUG, "EAP-NOOB: Exiting %s, ret %d", __func__, ret);
     if (ret == FAILURE) {
-        char * sql_error = (char *)sqlite3_errmsg(data->server_db);
+        char * sql_error = (char *)sqlite3_errmsg(data->db);
         if (sql_error != NULL)
             wpa_printf(MSG_DEBUG,"EAP-NOOB: SQL error : %s\n", sql_error);
     }
@@ -560,14 +561,14 @@ static int eap_noob_create_db(struct eap_noob_server_context * data)
     }
 
     wpa_printf(MSG_DEBUG, "EAP-NOOB: Entering %s", __func__);
-    if (SQLITE_OK != sqlite3_open_v2(data->db_name, &data->server_db,
+    if (SQLITE_OK != sqlite3_open_v2(DB_NAME, &data->db,
                 SQLITE_OPEN_READWRITE| SQLITE_OPEN_CREATE, NULL)) {
         wpa_printf(MSG_ERROR, "EAP-NOOB: Failed to open and Create Table");
         return FAILURE;
     }
 
-    if (FAILURE == eap_noob_db_statements(data->server_db, CREATE_TABLES_EPHEMERALSTATE) ||
-        FAILURE == eap_noob_db_statements(data->server_db, CREATE_TABLES_PERSISTENTSTATE)) {
+    if (FAILURE == eap_noob_db_statements(data->db, CREATE_TABLES_EPHEMERALSTATE) ||
+        FAILURE == eap_noob_db_statements(data->db, CREATE_TABLES_PERSISTENTSTATE)) {
         wpa_printf(MSG_ERROR, "EAP-NOOB: Unexpected error in table creation");
         return FAILURE;
     }
@@ -1089,7 +1090,7 @@ static int eap_noob_derive_session_secret(struct eap_noob_server_context * data,
     }
 
     EAP_NOOB_FREE(data->peer_attr->ecdh_exchange_data->shared_key);
-    len = eap_noob_Base64Decode(data->peer_attr->ecdh_exchange_data->x_peer_b64, &peer_pub_key);
+    len = eap_noob_Base64Decode(data->peer_attr->ecdh_exchange_data->x_b64_remote, &peer_pub_key);
     if (len == 0) {
         wpa_printf(MSG_DEBUG, "EAP-NOOB: Failed to decode public key of peer");
         ret = FAILURE; goto EXIT;
@@ -2558,13 +2559,13 @@ static void  eap_noob_decode_obj(struct eap_noob_peer_data * data, struct json_t
                 }
                 // x
                 else if (!os_strcmp(key, X_COORDINATE)) {
-                    data->ecdh_exchange_data->x_peer_b64 = os_strdup(val_str);
-                    wpa_printf(MSG_DEBUG, "X coordinate %s", data->ecdh_exchange_data->x_peer_b64);
+                    data->ecdh_exchange_data->x_b64_remote = os_strdup(val_str);
+                    wpa_printf(MSG_DEBUG, "X coordinate %s", data->ecdh_exchange_data->x_b64_remote);
                 }
                 // y
                 else if (!os_strcmp(key, Y_COORDINATE)) {
-                    data->ecdh_exchange_data->y_peer_b64 = os_strdup(val_str);
-                    wpa_printf(MSG_DEBUG, "X coordinate %s", data->ecdh_exchange_data->y_peer_b64);
+                    data->ecdh_exchange_data->y_b64_remote = os_strdup(val_str);
+                    wpa_printf(MSG_DEBUG, "X coordinate %s", data->ecdh_exchange_data->y_b64_remote);
                 }
                 break;
             case JSON_NUMBER:
@@ -3298,9 +3299,6 @@ static int eap_noob_server_ctxt_init(struct eap_noob_server_context * data, stru
     data->peer_attr->rcvd_params = 0;
     data->peer_attr->sleep_count = 0;
 
-    /* Setup DB. DB file name for the server */
-    data->db_name = (char *) os_strdup(DB_NAME);
-
     if (server_conf.read_conf == 0 && FAILURE == eap_noob_read_config(data)) {
         wpa_printf(MSG_DEBUG, "EAP-NOOB: Failed to initialize context");
         return FAILURE;
@@ -3365,7 +3363,6 @@ static void eap_noob_free_ctx(struct eap_noob_server_context * data)
         EAP_NOOB_FREE(peer->mac);
         if (peer->kdf_nonce_data) {
             EAP_NOOB_FREE(peer->kdf_nonce_data->Np);
-            EAP_NOOB_FREE(peer->kdf_nonce_data->nonce_peer_b64);
             EAP_NOOB_FREE(peer->kdf_nonce_data->Ns);
             //EAP_NOOB_FREE(peer->kdf_nonce_data->nonce_server_b64);
             os_free(peer->kdf_nonce_data);
@@ -3375,8 +3372,8 @@ static void eap_noob_free_ctx(struct eap_noob_server_context * data)
             EVP_PKEY_free(peer->ecdh_exchange_data->dh_key);
             EAP_NOOB_FREE(peer->ecdh_exchange_data->shared_key);
             EAP_NOOB_FREE(peer->ecdh_exchange_data->shared_key_b64);
-            EAP_NOOB_FREE(peer->ecdh_exchange_data->x_peer_b64);
-            EAP_NOOB_FREE(peer->ecdh_exchange_data->y_peer_b64);
+            EAP_NOOB_FREE(peer->ecdh_exchange_data->x_b64_remote);
+            EAP_NOOB_FREE(peer->ecdh_exchange_data->y_b64_remote);
             EAP_NOOB_FREE(peer->ecdh_exchange_data->x_b64);
             //EAP_NOOB_FREE(peer->ecdh_exchange_data->y_b64);
             EAP_NOOB_FREE(peer->ecdh_exchange_data->jwk_serv);
@@ -3403,14 +3400,13 @@ static void eap_noob_free_ctx(struct eap_noob_server_context * data)
         os_free(peer); peer = NULL;
     }
 
-    if (SQLITE_OK != sqlite3_close_v2(data->server_db)) {
+    if (SQLITE_OK != sqlite3_close_v2(data->db)) {
         wpa_printf(MSG_DEBUG, "EAP-NOOB: Error closing DB");
-        char * sql_error = (char *)sqlite3_errmsg(data->server_db);
+        char * sql_error = (char *)sqlite3_errmsg(data->db);
         if (sql_error != NULL)
             wpa_printf(MSG_DEBUG,"EAP-NOOB: SQL error : %s\n", sql_error);
     }
 
-    EAP_NOOB_FREE(data->db_name);
     os_free(data); data = NULL;
 }
 

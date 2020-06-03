@@ -8,7 +8,6 @@
  * Pre-processors for EAP-NOOB
  */
 
-#define DB_NAME                 "/tmp/eap_noob.db"
 #define DEFAULT_REALM           "eap-noob.net"
 #define VERSION_ONE             1
 #define SUITE_ONE               1
@@ -19,8 +18,6 @@
 #define FORMAT_BASE64URL        1
 
 /* Maximum values for fields */
-#define MAX_SUP_VER             3
-#define MAX_SUP_CSUITES         10
 #define MAX_CONF_LEN            500
 #define MAX_INFO_LEN            500
 #define MAX_PEER_ID_LEN         22
@@ -28,6 +25,7 @@
 #define MAX_MAC_INPUT_LEN       1500
 #define MAX_X25519_LEN          48
 #define MAX_URL_LEN             60
+#define MAX_QUERY_LEN           2048
 
 #define NOOBID_LEN              16
 #define NOOB_LEN                16
@@ -103,12 +101,15 @@
 #define REALM                   "Realm"
 #define SERVERINFO_NAME         "Name"
 #define SERVERINFO_URL          "Url"
+#define PEER_SERIAL_NUM         "Serial"
+#define PEER_SSID               "SSID"
+#define PEER_BSSID              "BSSID"
+#define PEER_TYPE               "Type"
+#define PEER_MAKE               "Make"
 #define KEYINGMODE              "KeyingMode"
 
 /* TODO: explanatory comment */
 #define ECDH_KDF_MAX            (1 << 30)
-
-#define CONF_PARAMS             (DIRP_RCVD|CRYPTOSUITEP_RCVD|VERSION_RCVD|SERVER_NAME_RCVD|SERVER_URL_RCVD|WE_COUNT_RCVD|REALM_RCVD|ENCODE_RCVD|MAX_OOB_RETRIES_RCVD)
 
 #define EAP_NOOB_FREE(_D)                           \
     if (_D) {                                       \
@@ -134,10 +135,6 @@ enum {UNREGISTERED_STATE, WAITING_FOR_OOB_STATE, OOB_RECEIVED_STATE, RECONNECTIN
 // TODO: Update to latest draft, where type 9 is now type 1
 enum {NONE, EAP_NOOB_TYPE_1, EAP_NOOB_TYPE_2, EAP_NOOB_TYPE_3, EAP_NOOB_TYPE_4, EAP_NOOB_TYPE_5,
     EAP_NOOB_TYPE_6, EAP_NOOB_TYPE_7, EAP_NOOB_TYPE_8, EAP_NOOB_TYPE_9};
-
-/* Keywords to handle database functions */
-enum {UPDATE_PERSISTENT_STATE, UPDATE_OOB_RETRIES, DELETE_EPHEMERAL, UPDATE_STATE_MINSLP, UPDATE_PERSISTENT_KEYS_SECRET, UPDATE_STATE_ERROR,
-    UPDATE_INITIALEXCHANGE_INFO, GET_NOOBID};
 
 enum eap_noob_err_code {NO_ERROR, E1001, E1002, E1003, E1004, E1007, E2001, E2002,
                         E2003, E2004, E3001, E3002, E3003, E4001, E5001, E5002, E5003, E5004};
@@ -172,20 +169,20 @@ struct eap_noob_oob_data {
 struct eap_noob_ecdh_key_exchange {
     EVP_PKEY * dh_key;
 
-    char * x_peer_b64;
-    char * y_peer_b64;
-
-    char * x_b64;
     size_t x_len;
-    char * y_b64;
+    char * x_b64;
+    char * x_b64_remote;
+
     size_t y_len;
+    char * y_b64;
+    char * y_b64_remote;
 
     char * jwk_serv;
     char * jwk_peer;
 
     u8 * shared_key;
-    char * shared_key_b64;
     size_t shared_key_b64_len;
+    char * shared_key_b64;
 };
 
 struct eap_noob_data {
@@ -228,7 +225,7 @@ struct eap_noob_data {
 
     time_t last_used_time;
 
-    Boolean record_present;
+    bool record_present;
 
     u8 *Kz;
     u8 *KzPrev;
@@ -241,8 +238,11 @@ struct eap_noob_data {
     u32 config_params;
     struct eap_noob_server_config_params *server_config_params;
     struct eap_noob_peer_config_params *peer_config_params;
-};
 
+    sqlite3 *db;
+
+    int wired;
+};
 
 const int error_code[] =  {0,1001,1002,1003,1004,1007,2001,2002,2003,2004,3001,3002,3003,4001,5001,5002,5003,5004};
 
