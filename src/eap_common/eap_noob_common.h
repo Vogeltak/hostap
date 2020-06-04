@@ -304,4 +304,30 @@ const int state_message_check[NUM_OF_STATES][MAX_MSG_TYPES] = {
 #define EAP_NOOB_STATE_VALID                                                              \
     (state_machine[data->server_state][data->peer_state] == VALID)   \
 
+/* Common routines */
+void eap_noob_set_error(struct eap_noob_data *data, int val);
+int eap_noob_Base64Decode(const char *b64message, unsigned char **buffer);
+int eap_noob_Base64Encode(const unsigned char *buffer, size_t length, char **b64text);
+void json_token_to_string(struct wpabuf *json, struct json_token *token);
+char * json_dump(struct json_token * token);
+void eap_noob_verify_param_len(struct eap_noob_data * data);
+void eap_noob_decode_obj(struct eap_noob_data * data, struct json_token * root);
+int eap_noob_ECDH_KDF_X9_63(unsigned char *out, size_t outlen,
+        const unsigned char * Z, size_t Zlen,
+        const unsigned char * algorithm_id, size_t algorithm_id_len,
+        const unsigned char * partyUinfo, size_t partyUinfo_len,
+        const unsigned char * partyVinfo, size_t partyVinfo_len,
+        const unsigned char * suppPrivinfo, size_t suppPrivinfo_len,
+        const EVP_MD * md);
+int eap_noob_gen_KDF(struct eap_noob_data * data, int state);
+char * eap_noob_build_mac_input(const struct eap_noob_data * data,
+                                       int first_param, int state);
+u8 * eap_noob_gen_MAC(const struct eap_noob_data * data, int type, u8 * key, int keylen, int state);
+int eap_noob_derive_secret(struct eap_noob_data * data, size_t * secret_len);
+int eap_noob_db_statements(sqlite3 * db, const char * query);
+int eap_noob_exec_query(struct eap_noob_data * data, const char * query,
+                               void (*callback)(struct eap_noob_data *, sqlite3_stmt *),
+                               int num_args, ...);
+int eap_noob_ctxt_alloc(struct eap_sm * sm, struct eap_noob_data * data);
+
 #endif /* EAP_NOOB_H */
