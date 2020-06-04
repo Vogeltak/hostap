@@ -193,6 +193,7 @@ struct eap_noob_data {
     u32 cryptosuiteprev;
     u32 dirs;
     u32 dirp;
+    u32 sleeptime;
     u32 minsleep;
     u32 sleep_count;
     u32 keying_mode;
@@ -223,6 +224,7 @@ struct eap_noob_data {
 
     enum eap_noob_err_code err_code;
 
+    time_t creation_time;
     time_t last_used_time;
 
     bool record_present;
@@ -300,6 +302,6 @@ const int state_message_check[NUM_OF_STATES][MAX_MSG_TYPES] = {
 };
 
 #define EAP_NOOB_STATE_VALID                                                              \
-    (state_machine[data->peer_attr->server_state][data->peer_attr->peer_state]  == VALID)   \
+    (state_machine[data->server_state][data->peer_state] == VALID)   \
 
 #endif /* EAP_NOOB_H */
