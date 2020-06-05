@@ -7,11 +7,78 @@
 
 #include "includes.h"
 
+#include <openssl/rand.h>
+#include <openssl/obj_mac.h>
+#include <openssl/evp.h>
+#include <openssl/ec.h>
+#include <openssl/buffer.h>
+#include <openssl/bio.h>
+#include <openssl/err.h>
+#include <openssl/hmac.h>
+#include <openssl/x509.h>
+#include <openssl/pem.h>
+
 #include <base64.h>
 #include <sqlite3.h>
 #include "common.h"
 #include "json.h"
 #include "eap_noob_common.h"
+
+/* Common data arrays */
+const int error_code[] =  {0,1001,1002,1003,1004,1007,2001,2002,2003,2004,3001,3002,3003,4001,5001,5002,5003,5004};
+
+const char *error_info[] =  {
+    "No error",
+    "Invalid NAI",
+    "Invalid message structure",
+    "Invalid data",
+    "Unexpected message type",
+    "Invalid ECDHE key",
+    "Unwanted peer",
+    "State mismatch, user action required",
+    "Unrecognized OOB message identifier",
+    "Unexpected peer identifier",
+    "No mutually supported protocol version",
+    "No mutually supported cryptosuite",
+    "No mutually supported OOB direction",
+    "HMAC verification failure",
+    "Application-specific error",
+    "Invalid server info",
+    "Invalid server URL",
+    "Invalid peer info"};
+
+/* This 2-D arry is used for state validation.
+ * Column number represents the state of Peer and the row number
+ * represents the server state
+ * The states are in squence as: {UNREGISTERED_STATE, WAITING_FOR_OOB_STATE,
+ * OOB_RECEIVED_STATE, RECONNECTING_STATE, REGISTERED_STATE}
+ * for both peer and server */
+const int state_machine[][5] = {
+    {VALID, VALID,   VALID,   INVALID, INVALID},
+    {VALID, VALID,   VALID,   INVALID, INVALID},
+    {VALID, VALID,   VALID,   INVALID, INVALID},
+    {VALID, INVALID, INVALID, VALID,   VALID},
+    {VALID, INVALID, INVALID, VALID,   INVALID}
+};
+
+// TODO: Update to latest draft (type 9 -> type 1)
+const int next_request_type[] = {
+    EAP_NOOB_TYPE_1, EAP_NOOB_TYPE_1, EAP_NOOB_TYPE_1, NONE,            NONE,
+    EAP_NOOB_TYPE_1, EAP_NOOB_TYPE_3, EAP_NOOB_TYPE_4, NONE,            NONE,
+    EAP_NOOB_TYPE_1, EAP_NOOB_TYPE_4, EAP_NOOB_TYPE_4, NONE,            NONE,
+    EAP_NOOB_TYPE_1, NONE,            NONE,            EAP_NOOB_TYPE_5, EAP_NOOB_TYPE_5,
+    EAP_NOOB_TYPE_1, NONE,            NONE,            EAP_NOOB_TYPE_5, NONE
+};
+
+/*server state vs message type matrix*/
+// TODO: Update to latest draft (type 9 -> type 1)
+const int state_message_check[NUM_OF_STATES][MAX_MSG_TYPES] = {
+    {VALID, VALID,   VALID,   INVALID,  INVALID,  INVALID,  INVALID,  INVALID, VALID}, //UNREGISTERED_STATE
+    {VALID, VALID,   VALID,   VALID,    VALID,    INVALID,  INVALID,  INVALID, VALID}, //WAITING_FOR_OOB_STATE
+    {VALID, VALID,   VALID,   INVALID,  VALID,    INVALID,  INVALID,  INVALID, VALID}, //OOB_RECEIVED_STATE
+    {VALID, INVALID, INVALID, INVALID,  INVALID,  VALID,    VALID,    VALID,   VALID},   //RECONNECT
+    {VALID, INVALID, INVALID, INVALID,  VALID,    INVALID,  INVALID,  INVALID, VALID}, //REGISTERED_STATE
+};
 
 void eap_noob_set_error(struct eap_noob_data *data, int val)
 {
@@ -32,7 +99,7 @@ int eap_noob_Base64Decode(const char * b64message, unsigned char ** buffer)
     size_t b64pad = 4*((len + 3)/4) - len;
     char *temp = os_zalloc(len + b64pad + 1);
     if (temp == NULL)
-        -1;
+        return -1;
     os_memcpy(temp, b64message, len);
     for(int i = 0; i < len; i++) {
         if (temp[i] == '-')
@@ -195,6 +262,8 @@ void eap_noob_verify_param_len(struct eap_noob_data * data)
     u32 count  = 0;
     u32 pos = 0x01;
 
+    wpa_printf(MSG_DEBUG, "EAP-NOOB: Entering %s", __func__);
+
     if (NULL == data) {
         wpa_printf(MSG_DEBUG, "EAP-NOOB: Input arguments NULL for function %s",__func__);
         return ;
@@ -208,10 +277,12 @@ void eap_noob_verify_param_len(struct eap_noob_data * data)
                     }
                     break;
                 case NONCE_RCVD:
-                    if (strlen((char *)data->kdf_nonce_data->Np) > NONCE_LEN) {
+                    if (data->kdf_nonce_data->Np && strlen((char *)data->kdf_nonce_data->Np) > NONCE_LEN) {
+                        wpa_printf(MSG_DEBUG, "EAP-NOOB: Np is too long");
                         eap_noob_set_error(data, E1003);
                     }
-                    if (strlen((char *)data->kdf_nonce_data->Ns) > NONCE_LEN) {
+                    if (data->kdf_nonce_data->Ns && strlen((char *)data->kdf_nonce_data->Ns) > NONCE_LEN) {
+                        wpa_printf(MSG_DEBUG, "EAP-NOOB: Ns is too long");
                         eap_noob_set_error(data, E1003);
                     }
                     break;
@@ -228,10 +299,13 @@ void eap_noob_verify_param_len(struct eap_noob_data * data)
                         eap_noob_set_error(data, E5002);
                     }
                     break;
+                default:
+                    ;
             }
         }
         pos = pos<<1;
     }
+    wpa_printf(MSG_DEBUG, "EAP-NOOB: Exiting %s", __func__);
 }
 
 /**
@@ -320,8 +394,6 @@ void eap_noob_decode_obj(struct eap_noob_data * data, struct json_token * root)
                         data->server_info = json_dump(child_copy);
                     }
 
-                    wpa_printf(MSG_DEBUG, "EAP-NOOB: Peer info: %s", data->peer_info);
-
                     // Free intermediate variable
                     json_free(child_copy);
 
@@ -356,7 +428,7 @@ void eap_noob_decode_obj(struct eap_noob_data * data, struct json_token * root)
                         el = el->sibling;
                         i++;
                     }
-                     data->rcvd_params |= CRYPTOSUITES_RCVD;
+                     data->rcvd_params |= CRYPTOSUITE_RCVD;
                 }
                 break;
             case JSON_STRING:
@@ -368,7 +440,7 @@ void eap_noob_decode_obj(struct eap_noob_data * data, struct json_token * root)
 
                 // PeerId
                 if (!os_strcmp(key, PEERID)) {
-                    data->peerid = os_strdup(val_str);
+                    data->peerid_rcvd = os_strdup(val_str);
                     data->rcvd_params |= PEERID_RCVD;
                 }
                 // Realm
@@ -384,14 +456,29 @@ void eap_noob_decode_obj(struct eap_noob_data * data, struct json_token * root)
                         data->rcvd_params |= NONCE_RCVD;
                     }
                 }
+                // Np or Np2
+                else if (!os_strcmp(key, NP) || !os_strcmp(key, NP2)) {
+                    size_t decode_len = eap_noob_Base64Decode(val_str, &data->kdf_nonce_data->Np);
+                    if (decode_len) {
+                        data->rcvd_params |= NONCE_RCVD;
+                    }
+                }
                 // NoobId
                 else if (!os_strcmp(key, NOOBID)) {
                     data->oob_data->NoobId_b64 = os_strdup(val_str);
                     wpa_printf(MSG_DEBUG, "EAP-NOOB: Received NoobId = %s", data->oob_data->NoobId_b64);
-                    data->rcvd_params |= HINT_RCVD;
+                    data->rcvd_params |= NOOBID_RCVD;
                 }
                 // MACs or MACs2
                 else if (!os_strcmp(key, MACS) || !os_strcmp(key, MACS2)) {
+                    wpa_printf(MSG_DEBUG, "EAP-NOOB: Received MAC %s", val_str);
+                    size_t decode_len = eap_noob_Base64Decode((char *) val_str, (u8 **) &data->mac);
+                    if (decode_len) {
+                        data->rcvd_params |= MAC_RCVD;
+                    }
+                }
+                // MACp or MACp2
+                else if (!os_strcmp(key, MACP) || !os_strcmp(key, MACP2)) {
                     wpa_printf(MSG_DEBUG, "EAP-NOOB: Received MAC %s", val_str);
                     size_t decode_len = eap_noob_Base64Decode((char *) val_str, (u8 **) &data->mac);
                     if (decode_len) {
@@ -424,12 +511,12 @@ void eap_noob_decode_obj(struct eap_noob_data * data, struct json_token * root)
                 // Dirp
                 else if (!os_strcmp(key, DIRP)) {
                     data->dirp = val_int;
-                    data->rcvd_params |= DIRP_RCVD;
+                    data->rcvd_params |= DIR_RCVD;
                 }
                 // Dirs
                 else if (!os_strcmp(key, DIRS)) {
                     data->dirs = val_int;
-                    data->rcvd_params |= DIRS_RCVD;
+                    data->rcvd_params |= DIR_RCVD;
                 }
                 // Verp
                 else if (!os_strcmp(key, VERP)) {
@@ -439,7 +526,7 @@ void eap_noob_decode_obj(struct eap_noob_data * data, struct json_token * root)
                 // Cryptosuitep
                 else if (!os_strcmp(key, CRYPTOSUITEP)) {
                     data->cryptosuite = val_int;
-                    data->rcvd_params |= CRYPTOSUITEP_RCVD;
+                    data->rcvd_params |= CRYPTOSUITE_RCVD;
                 }
                 // SleepTime
                 else if (!os_strcmp(key, SLEEPTIME)) {
@@ -1033,14 +1120,12 @@ EXIT:
 
 /**
  * eap_noob_ctxt_alloc : Allocates the data structs for EAP-NOOB
- * @sm : eap method context
  * @peer : noob data
  * Returns : SUCCESS/FAILURE
  **/
-int eap_noob_ctxt_alloc(struct eap_sm * sm, struct eap_noob_data * data)
+int eap_noob_ctxt_alloc(struct eap_noob_data * data)
 {
-    if (!data || !sm) return FAILURE;
-
+    if (!data) return FAILURE;
 
     if ((NULL == (data->oob_data = \
            os_zalloc(sizeof (struct eap_noob_oob_data))))) {

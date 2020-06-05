@@ -1,5 +1,5 @@
-#ifndef EAPOOB_H
-#define EAPOOB_H
+#ifndef EAP_NOOB_PEER_H
+#define EAP_NOOB_PEER_H
 
 
 /* Configuration file */
@@ -8,39 +8,24 @@
 /* All the pre-processors of EAP-NOOB */
 #define DB_NAME                     "/tmp/noob_peer.db"
 
-/* MAX values for the fields */
-#define MAX_SUP_VER             1
-#define MAX_SUP_CSUITES         1
-
-/* Bitmasks to validate message structure*/
-#define PEERID_RCVD                 0x0001
-#define DIRS_RCVD                   0x0002
-#define CRYPTOSUITES_RCVD           0x0004
-#define VERSION_RCVD                0x0008
-#define NONCE_RCVD                  0x0010
-#define MAC_RCVD                    0x0020
-#define PKEY_RCVD                   0x0040
-#define INFO_RCVD                   0x0080
-#define STATE_RCVD                  0x0100
-#define MINSLP_RCVD                 0x0200
+/* Unique peer bitmasks to validate message structure.
+ * Others are in the common header file */
 #define PEER_MAKE_RCVD              0x0400
 #define PEER_ID_NUM_RCVD            0x0800
-#define HINT_RCVD                   0x1000
 #define DEF_MIN_SLEEP_RCVD          0x2000
 #define MSG_ENC_FMT_RCVD            0x4000
 #define PEER_TYPE_RCVD              0x8000
-#define MAX_OOB_RETRIES_RCVD       0x10000
 
 /* Bitmasks specifying expected parameters for each message */
-#define TYPE_ONE_PARAMS             (PEERID_RCVD|VERSION_RCVD|CRYPTOSUITES_RCVD|DIRS_RCVD|INFO_RCVD)
+#define TYPE_ONE_PARAMS             (PEERID_RCVD|VERSION_RCVD|CRYPTOSUITE_RCVD|DIR_RCVD|INFO_RCVD)
 #define TYPE_TWO_PARAMS             (PEERID_RCVD|NONCE_RCVD|PKEY_RCVD)
 #define TYPE_THREE_PARAMS           (PEERID_RCVD)
-#define TYPE_FOUR_PARAMS            (PEERID_RCVD|MAC_RCVD|HINT_RCVD)
-#define TYPE_FIVE_PARAMS            (PEERID_RCVD|CRYPTOSUITES_RCVD|INFO_RCVD)
+#define TYPE_FOUR_PARAMS            (PEERID_RCVD|MAC_RCVD|NOOBID_RCVD)
+#define TYPE_FIVE_PARAMS            (PEERID_RCVD|CRYPTOSUITE_RCVD|INFO_RCVD)
 #define TYPE_SIX_PARAMS             (PEERID_RCVD|NONCE_RCVD)
 #define TYPE_SEVEN_PARAMS           (PEERID_RCVD|MAC_RCVD)
 #define TYPE_HINT_PARAMS            (PEERID_RCVD)
-#define CONF_PARAMS                 (DIRS_RCVD|CRYPTOSUITES_RCVD|VERSION_RCVD|PEER_TYPE_RCVD|PEER_ID_NUM_RCVD|PEER_TYPE_RCVD|MAX_OOB_RETRIES_RCVD)
+#define CONF_PARAMS                 (DIR_RCVD|CRYPTOSUITE_RCVD|VERSION_RCVD|PEER_TYPE_RCVD|PEER_ID_NUM_RCVD|PEER_TYPE_RCVD|MAX_OOB_RETRIES_RCVD)
 
 /* Statements to create peer database tables */
 #define CREATE_TABLES_EPHEMERALSTATE                \

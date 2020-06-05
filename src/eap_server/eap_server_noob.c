@@ -49,9 +49,9 @@
 #include "common.h"
 #include "json.h"
 #include "crypto/crypto.h"
+#include "eap_common/eap_noob_common.h"
 #include "eap_i.h"
 #include "eap_server_noob.h"
-#include "eap_common/eap_noob_common.h"
 
 static struct eap_noob_global_conf server_conf;
 
@@ -86,41 +86,6 @@ static int eap_noob_verify_peerId(struct eap_noob_data * data)
         wpa_printf(MSG_DEBUG, "EAP-NOOB: Verification of PeerId failed, setting error E2004");
         eap_noob_set_error(data, E2004); return FAILURE;
     }
-    return SUCCESS;
-}
-
-/**
- * eap_noob_Base64Encode : Encode an ascii string to base64url. Dealloc b64text
- * as needed from the caller.
- * @buffer : input buffer
- * @length : input buffer length
- * @b64text : converted base64url text
- * Returns : SUCCESS/FAILURE
- **/
-int eap_noob_Base64Encode(const unsigned char * buffer, size_t length, char ** b64text)
-{
-    size_t len = 0;
-    unsigned char *tmp;
-    tmp = base64_encode(buffer, length, &len);
-    if (tmp == NULL)
-            return -1;
-    for(int i = 0; i < len; i++) {
-            if (tmp[i] == '+')
-                    tmp[i] = '-';
-            else if (tmp[i] == '/')
-                    tmp[i] = '_';
-            else if (tmp[i] == '=') {
-                    tmp[i] = '\0';
-                    len = i;
-                    break;
-            }
-    }
-
-    *b64text = os_zalloc(len);
-    if (*b64text == NULL)
-            return -1;
-    os_memcpy(*b64text, tmp, len);
-
     return SUCCESS;
 }
 
@@ -445,11 +410,11 @@ static void eap_noob_assign_config(char * conf_name, char * conf_value, struct e
         wpa_printf(MSG_DEBUG, "EAP-NOOB: FILE  READ= %d", data->versions[0]);
     }
     else if (0 == strcmp("Csuite",conf_name)) {
-        data->cryptosuites[0] = (int) strtol(conf_value, NULL, 10); data->config_params |= CRYPTOSUITEP_RCVD;
+        data->cryptosuites[0] = (int) strtol(conf_value, NULL, 10); data->config_params |= CRYPTOSUITE_RCVD;
         wpa_printf(MSG_DEBUG, "EAP-NOOB: FILE  READ= %d", data->cryptosuites[0]);
     }
     else if (0 == strcmp("OobDirs",conf_name)) {
-        data->dirs = (int) strtol(conf_value, NULL, 10); data->config_params |= DIRP_RCVD;
+        data->dirs = (int) strtol(conf_value, NULL, 10); data->config_params |= DIR_RCVD;
         wpa_printf(MSG_DEBUG, "EAP-NOOB: FILE  READ= %d", data->dirs);
     }
     else if (0 == strcmp("ServerName", conf_name)) {
@@ -548,10 +513,10 @@ static int eap_noob_handle_incomplete_conf(struct eap_noob_data * data)
     if (0 == (data->config_params & VERSION_RCVD))
         data->versions[0] = VERSION_ONE;
 
-    if (0 == (data->config_params & CRYPTOSUITEP_RCVD))
+    if (0 == (data->config_params & CRYPTOSUITE_RCVD))
         data->cryptosuites[0] = SUITE_ONE;
 
-    if (0 == (data->config_params & DIRP_RCVD))
+    if (0 == (data->config_params & DIR_RCVD))
         data->dirs = BOTH_DIRECTIONS;
 
     if (0 == (data->config_params & MAX_OOB_RETRIES_RCVD)) {
@@ -713,97 +678,6 @@ int eap_noob_get_id_peer(char * str, size_t size)
         return 0;
 
     return 1;
-}
-
-
-/**
- * eap_noob_ECDH_KDF_X9_63: generates KDF
- * @out:
- * @outlen:
- * @Z:
- * @Zlen:
- * @alorithm_id:
- * @alorithm_id_len:
- * @partyUinfo:
- * @partyUinfo_len:
- * @partyVinfo:
- * @partyVinfo_len
- * @suppPrivinfo:
- * @suppPrivinfo_len:
- * @EVP_MD:
- * @Returns:
- **/
-
-int eap_noob_ECDH_KDF_X9_63(unsigned char *out, size_t outlen,
-        const unsigned char * Z, size_t Zlen,
-        const unsigned char * algorithm_id, size_t algorithm_id_len,
-        const unsigned char * partyUinfo, size_t partyUinfo_len,
-        const unsigned char * partyVinfo, size_t partyVinfo_len,
-        const unsigned char * suppPrivinfo, size_t suppPrivinfo_len,
-        const EVP_MD *md)
-{
-    EVP_MD_CTX * mctx = NULL;
-    unsigned char ctr[4] = {0};
-    unsigned int i = 0;
-    size_t mdlen = 0;
-    int rv = 0;
-
-    wpa_printf(MSG_DEBUG, "EAP-NOOB: KDF start");
-    wpa_hexdump_ascii(MSG_DEBUG, "EAP-NOOB: Value:", Z, Zlen);
-
-    if (algorithm_id_len > ECDH_KDF_MAX || outlen > ECDH_KDF_MAX ||
-        Zlen > ECDH_KDF_MAX || partyUinfo_len > ECDH_KDF_MAX ||
-        partyVinfo_len > ECDH_KDF_MAX || suppPrivinfo_len > ECDH_KDF_MAX)
-        return 0;
-
-    mctx = EVP_MD_CTX_create();
-    if (mctx == NULL)
-        return 0;
-
-    mdlen = EVP_MD_size(md);
-    wpa_printf(MSG_DEBUG,"EAP-NOOB: KDF begin %d", (int)mdlen);
-    for (i = 1;; i++) {
-        unsigned char mtmp[EVP_MAX_MD_SIZE];
-        EVP_DigestInit_ex(mctx, md, NULL);
-        ctr[3] = i & 0xFF;
-        ctr[2] = (i >> 8) & 0xFF;
-        ctr[1] = (i >> 16) & 0xFF;
-        ctr[0] = (i >> 24) & 0xFF;
-       if (!EVP_DigestUpdate(mctx, ctr, sizeof(ctr)))
-            goto err;
-        if (!EVP_DigestUpdate(mctx, Z, Zlen))
-            goto err;
-        if (!EVP_DigestUpdate(mctx, algorithm_id, algorithm_id_len))
-            goto err;
-        if (!EVP_DigestUpdate(mctx, partyUinfo, partyUinfo_len))
-            goto err;
-        if (!EVP_DigestUpdate(mctx, partyVinfo, partyVinfo_len))
-            goto err;
-
-        if (suppPrivinfo != NULL)
-            if (!EVP_DigestUpdate(mctx, suppPrivinfo, suppPrivinfo_len))
-                goto err;
-
-        if (outlen >= mdlen) {
-            if (!EVP_DigestFinal(mctx, out, NULL))
-                goto err;
-            outlen -= mdlen;
-            if (outlen == 0)
-                break;
-            out += mdlen;
-        } else {
-            if (!EVP_DigestFinal(mctx, mtmp, NULL))
-                goto err;
-            memcpy(out, mtmp, outlen);
-            OPENSSL_cleanse(mtmp, mdlen);
-            break;
-        }
-    }
-    rv = 1;
-err:
-    wpa_printf(MSG_DEBUG,"EAP-NOOB:KDF finished %d",rv);
-    EVP_MD_CTX_destroy(mctx);
-    return rv;
 }
 
 static void eap_noob_get_sid(struct eap_sm * sm, struct eap_noob_data * data)
@@ -1906,7 +1780,7 @@ static void eap_noob_rsp_type_seven(struct eap_noob_data * data)
     if ((data->err_code != NO_ERROR)) {
         eap_noob_set_done(data, NOT_DONE); return;
     }
-    if (eap_noob_verify_peerId(data)) {
+    if (eap_noob_verify_peerId(data) == SUCCESS) {
         mac = eap_noob_gen_MAC(data, MACP_TYPE, data->kdf_out->Kmp, KMP_LEN, RECONNECTING_STATE);
         eap_noob_Base64Encode(mac, MAC_LEN, &mac_b64);
         if (0 != strcmp(data->mac, (char *)mac)) {
@@ -1946,7 +1820,7 @@ static void eap_noob_rsp_type_six(struct eap_noob_data * data)
         eap_noob_set_done(data, NOT_DONE); return;
     }
     wpa_hexdump_ascii(MSG_DEBUG, "EAP-NOOB: Nonce Peer", data->kdf_nonce_data->Np, NONCE_LEN);
-    if (eap_noob_verify_peerId(data)) {
+    if (eap_noob_verify_peerId(data) == SUCCESS) {
         data->next_req = EAP_NOOB_TYPE_7;
         eap_noob_set_done(data, NOT_DONE); data->rcvd_params = 0;
     }
@@ -1972,7 +1846,7 @@ static void eap_noob_rsp_type_five(struct eap_noob_data * data)
         eap_noob_set_error(data, E1002);
         eap_noob_set_done(data, NOT_DONE); return;
     }
-    if (eap_noob_verify_peerId(data))
+    if (eap_noob_verify_peerId(data) == SUCCESS)
         data->next_req = EAP_NOOB_TYPE_6;
 
     eap_noob_set_done(data, NOT_DONE);
@@ -2002,7 +1876,7 @@ static void eap_noob_rsp_type_four(struct eap_noob_data * data)
         eap_noob_set_done(data, NOT_DONE); return;
     }
 
-    if (eap_noob_verify_peerId(data)) {
+    if (eap_noob_verify_peerId(data) == SUCCESS) {
         mac = eap_noob_gen_MAC(data, MACP_TYPE, data->kdf_out->Kmp, KMP_LEN, data->peer_state);
         eap_noob_Base64Encode(mac, MAC_LEN, &mac_b64);
         if (0 != strcmp(data->mac, (char *)mac)) {
@@ -2043,7 +1917,7 @@ static void eap_noob_rsp_type_three(struct eap_noob_data * data)
         return;
     }
 
-    if (eap_noob_verify_peerId(data)) {
+    if (eap_noob_verify_peerId(data) == SUCCESS) {
         eap_noob_change_state(data, WAITING_FOR_OOB_STATE);
         data->next_req = NONE;
         eap_noob_set_done(data, DONE);
@@ -2067,6 +1941,7 @@ static void eap_noob_rsp_type_two(struct eap_noob_data * data)
 
     if (data->rcvd_params != TYPE_TWO_PARAMS) {
         eap_noob_set_error(data,E1002);
+        wpa_printf(MSG_DEBUG, "EAP-NOOB: Did not match type 2 parameters");
         eap_noob_set_done(data, NOT_DONE); return;
     }
     wpa_hexdump_ascii(MSG_DEBUG, "EAP-NOOB: Nonce Peer", data->kdf_nonce_data->Np, NONCE_LEN);
@@ -2074,7 +1949,7 @@ static void eap_noob_rsp_type_two(struct eap_noob_data * data)
         eap_noob_set_done(data, NOT_DONE); return;
     }
 
-    if (eap_noob_verify_peerId(data)) {
+    if (eap_noob_verify_peerId(data) == SUCCESS) {
         wpa_hexdump_ascii(MSG_DEBUG, "EAP-NOOB: Nonce Peer", data->kdf_nonce_data->Np, NONCE_LEN);
         if (eap_noob_derive_session_secret(data,&secret_len) != SUCCESS) {
             wpa_printf(MSG_DEBUG, "EAP-NOOB: Error in deriving shared key"); return;
@@ -2123,7 +1998,7 @@ static void eap_noob_rsp_type_one(struct eap_sm *sm,
         eap_noob_set_error(data,E1002);
         eap_noob_set_done(data, NOT_DONE); return;
     }
-    if (eap_noob_verify_peerId(data)) {
+    if (eap_noob_verify_peerId(data) == SUCCESS) {
         data->next_req = EAP_NOOB_TYPE_2;
     }
     eap_noob_get_sid(sm, data); eap_noob_set_done(data, NOT_DONE);
@@ -2143,7 +2018,7 @@ static void eap_noob_rsp_noobid(struct eap_noob_data * data)
         return;
     }
 
-    if (!eap_noob_verify_peerId(data)) {
+    if (eap_noob_verify_peerId(data) != SUCCESS) {
         eap_noob_set_error(data,E2004);
         eap_noob_set_done(data, NOT_DONE);
         return;
@@ -2309,8 +2184,11 @@ static void eap_noob_process(struct eap_sm * sm, void * priv, struct wpabuf * re
     // This way, all methods will be able to access it.
     eap_noob_decode_obj(data, resp_obj);
     if (data->err_code != NO_ERROR) {
+        wpa_printf(MSG_ERROR, "EAP-NOOB: Decoding gave error: %s", error_info[data->err_code]);
         goto EXIT;
     }
+
+    wpa_printf(MSG_ERROR, "EAP-NOOB: Passed decode_obj");
 
     /* TODO : replce switch case with function pointers. */
     switch (data->recv_msg) {
@@ -2501,39 +2379,6 @@ static int eap_noob_getTimeout(struct eap_sm *sm, void *priv)
 }
 
 /**
- * eap_noob_server_ctxt_alloc : Allocates the subcontexts inside the peer context
- * @sm : eap method context
- * @peer : server data
- * Returns : SUCCESS/FAILURE
- **/
-static int eap_noob_server_ctxt_alloc(struct eap_sm * sm, struct eap_noob_data * data)
-{
-    if (!data || !sm) return FAILURE;
-
-    if ((NULL == (data->ecdh_exchange_data = \
-           os_zalloc(sizeof (struct eap_noob_ecdh_key_exchange))))) {
-        return FAILURE;
-    }
-
-    if ((NULL == (data->oob_data = \
-           os_zalloc(sizeof (struct eap_noob_oob_data))))) {
-        return FAILURE;
-    }
-
-    if ((NULL == (data->kdf_out = \
-           os_zalloc(sizeof (struct eap_noob_ecdh_kdf_out))))) {
-        return FAILURE;
-    }
-
-    if ((NULL == (data->kdf_nonce_data = \
-           os_zalloc(sizeof (struct eap_noob_ecdh_kdf_nonce))))) {
-        return FAILURE;
-    }
-
-    return SUCCESS;
-}
-
-/**
  * eap_noob_server_ctxt_init -Supporting Initializer for EAP-NOOB server Method
  * Allocates memory for the EAP-NOOB data
  * @data: Pointer to EAP-NOOB data
@@ -2544,7 +2389,7 @@ static int eap_noob_server_ctxt_init(struct eap_noob_data * data, struct eap_sm 
     char * NAI = NULL;
     int retval = FAILURE;
 
-    if (FAILURE == eap_noob_ctxt_alloc(sm, data))
+    if (FAILURE == eap_noob_ctxt_alloc(data))
         return FAILURE;
 
     data->server_state = UNREGISTERED_STATE;

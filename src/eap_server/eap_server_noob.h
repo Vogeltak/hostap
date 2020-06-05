@@ -1,5 +1,5 @@
-#ifndef EAPOOB_H
-#define EAPOOB_H
+#ifndef EAP_NOOB_SERVER_H
+#define EAP_NOOB_SERVER_H
 
 /* Configuration file */
 #define CONF_FILE               "eapnoob.conf"
@@ -9,39 +9,24 @@
 #define DB_NAME                 "/tmp/noob_server.db"
 #define DEVICE_TABLE            "devices"
 
-/* MAX values for fields */
-#define MAX_SUP_VER             3
-#define MAX_SUP_CSUITES         10
-
-/* Bitmasks to validate message structure*/
-#define PEERID_RCVD             0x0001
-#define DIRP_RCVD               0x0002
-#define CRYPTOSUITEP_RCVD       0x0004
-#define VERSION_RCVD            0x0008
-#define NONCE_RCVD              0x0010
-#define MAC_RCVD                0x0020
-#define PKEY_RCVD               0x0040
-#define INFO_RCVD               0x0080
-#define STATE_RCVD              0x0100
-#define MINSLP_RCVD             0x0200
+/* Unique server bitmasks to validate message structure.
+ * Others are in the common header file */
 #define SERVER_NAME_RCVD        0x0400
 #define SERVER_URL_RCVD         0x0800
-#define NOOBID_RCVD             0x1000
 #define WE_COUNT_RCVD           0x2000
 #define REALM_RCVD              0x4000
 #define ENCODE_RCVD             0x8000
-#define MAX_OOB_RETRIES_RCVD   0x10000
 
 /* Bitmasks specifying expected parameters for each message */
-#define TYPE_ONE_PARAMS         (PEERID_RCVD|VERSION_RCVD|CRYPTOSUITEP_RCVD|DIRP_RCVD|INFO_RCVD)
+#define TYPE_ONE_PARAMS         (PEERID_RCVD|VERSION_RCVD|CRYPTOSUITE_RCVD|DIR_RCVD|INFO_RCVD)
 #define TYPE_TWO_PARAMS         (PEERID_RCVD|NONCE_RCVD|PKEY_RCVD)
 #define TYPE_THREE_PARAMS       (PEERID_RCVD)
 #define TYPE_FOUR_PARAMS        (PEERID_RCVD|MAC_RCVD)
-#define TYPE_FIVE_PARAMS        (PEERID_RCVD|CRYPTOSUITEP_RCVD|INFO_RCVD)
+#define TYPE_FIVE_PARAMS        (PEERID_RCVD|CRYPTOSUITE_RCVD|INFO_RCVD)
 #define TYPE_SIX_PARAMS         (PEERID_RCVD|NONCE_RCVD)
 #define TYPE_SEVEN_PARAMS       (PEERID_RCVD|MAC_RCVD)
 #define TYPE_EIGHT_PARAMS       (PEERID_RCVD|NOOBID_RCVD)
-#define CONF_PARAMS             (DIRP_RCVD|CRYPTOSUITEP_RCVD|VERSION_RCVD|SERVER_NAME_RCVD|SERVER_URL_RCVD|WE_COUNT_RCVD|REALM_RCVD|ENCODE_RCVD|MAX_OOB_RETRIES_RCVD)
+#define CONF_PARAMS             (DIR_RCVD|CRYPTOSUITE_RCVD|VERSION_RCVD|SERVER_NAME_RCVD|SERVER_URL_RCVD|WE_COUNT_RCVD|REALM_RCVD|ENCODE_RCVD|MAX_OOB_RETRIES_RCVD)
 
 /* Statements to create server database tables */
 #define CREATE_TABLES_EPHEMERALSTATE                \

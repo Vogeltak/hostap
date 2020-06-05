@@ -51,9 +51,9 @@
 #include "common.h"
 #include "json.h"
 #include "crypto/crypto.h"
+#include "eap_common/eap_noob_common.h"
 #include "eap_i.h"
 #include "eap_noob.h"
-#include "eap_common/eap_noob_common.h"
 #include "../../wpa_supplicant/config.h"
 #include "../../wpa_supplicant/wpa_supplicant_i.h"
 #include "../../wpa_supplicant/blacklist.h"
@@ -653,8 +653,8 @@ EXIT:
 **/
 static struct wpabuf * eap_noob_verify_PeerId(struct eap_noob_data * data, u8  id)
 {
-    if ((data->peerid) && (data->peerid) &&
-        (0 != os_strcmp(data->peerid, data->peerid))) {
+    if ((data->peerid) && (data->peerid_rcvd) &&
+        (0 != os_strcmp(data->peerid, data->peerid_rcvd))) {
         data->err_code = E2004;
         return eap_noob_err_msg(data, id);
     }
@@ -1545,7 +1545,7 @@ static struct wpabuf * eap_noob_req_type_one(struct eap_sm * sm, struct eap_noob
         resp = eap_noob_err_msg(data,id); return resp;
     }
 
-    data->peerid = os_strdup(data->peerid);
+    data->peerid = os_strdup(data->peerid_rcvd);
     if (NULL != data->realm && strlen(data->realm) > 0) {
 //If the server sent a realm, then add it to the peer attr
         data->realm = os_strdup(data->realm);
@@ -1853,12 +1853,12 @@ static void eap_noob_assign_config(char * conf_name,char * conf_value, struct ea
     }
     else if (0 == strcmp("Csuite",conf_name)) {
         data->cryptosuite = (int) strtol(conf_value, NULL, 10);
-        data->config_params |= CRYPTOSUITES_RCVD;
+        data->config_params |= CRYPTOSUITE_RCVD;
         wpa_printf(MSG_DEBUG, "EAP-NOOB: FILE  READ= %d",data->cryptosuite);
     }
     else if (0 == strcmp("OobDirs",conf_name)) {
         data->dirp = (int) strtol(conf_value, NULL, 10);
-        data->config_params |= DIRS_RCVD;
+        data->config_params |= DIR_RCVD;
         wpa_printf(MSG_DEBUG, "EAP-NOOB: FILE  READ= %d",data->dirp);
     }
     else if (0 == strcmp("PeerMake", conf_name)) {
@@ -1948,9 +1948,9 @@ static int eap_noob_handle_incomplete_conf(struct eap_noob_data * data)
     }
     if (! (data->config_params & VERSION_RCVD))
         data->version = VERSION_ONE;
-    if (! (data->config_params & CRYPTOSUITES_RCVD))
+    if (! (data->config_params & CRYPTOSUITE_RCVD))
         data->cryptosuite = SUITE_ONE;
-    if (! (data->config_params & DIRS_RCVD))
+    if (! (data->config_params & DIR_RCVD))
         data->dirp = PEER_TO_SERVER;
     if (! (data->config_params & MAX_OOB_RETRIES_RCVD))
         data->max_oob_retries = DEFAULT_MAX_OOB_RETRIES;
@@ -2032,7 +2032,7 @@ static int eap_noob_peer_ctxt_init(struct eap_sm * sm,  struct eap_noob_data * d
     int error = 0;
     int retval = FAILURE;
 
-    if (FAILURE == (retval = eap_noob_ctxt_alloc(sm, data))) {
+    if (FAILURE == (retval = eap_noob_ctxt_alloc(data))) {
         wpa_printf(MSG_DEBUG, "EAP-NOOB: Error in allocating peer data");
         goto EXIT;
     }

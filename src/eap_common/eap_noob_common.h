@@ -18,6 +18,8 @@
 #define FORMAT_BASE64URL        1
 
 /* Maximum values for fields */
+#define MAX_SUP_VER             3
+#define MAX_SUP_CSUITES         10
 #define MAX_CONF_LEN            500
 #define MAX_INFO_LEN            500
 #define MAX_PEER_ID_LEN         22
@@ -41,6 +43,20 @@
 #define MAC_LEN                 32
 #define HASH_LEN                16
 #define METHOD_ID_LEN           32
+
+/* Common bitmasks to validate message structure */
+#define PEERID_RCVD                 0x0001
+#define DIR_RCVD                    0x0002
+#define CRYPTOSUITE_RCVD            0x0004
+#define VERSION_RCVD                0x0008
+#define NONCE_RCVD                  0x0010
+#define MAC_RCVD                    0x0020
+#define PKEY_RCVD                   0x0040
+#define INFO_RCVD                   0x0080
+#define STATE_RCVD                  0x0100
+#define MINSLP_RCVD                 0x0200
+#define NOOBID_RCVD                 0x1000
+#define MAX_OOB_RETRIES_RCVD       0x10000
 
 /* Valid or invalid states */
 #define INVALID                 0
@@ -246,60 +262,12 @@ struct eap_noob_data {
     int wired;
 };
 
-const int error_code[] =  {0,1001,1002,1003,1004,1007,2001,2002,2003,2004,3001,3002,3003,4001,5001,5002,5003,5004};
-
-const char *error_info[] =  {
-    "No error",
-    "Invalid NAI",
-    "Invalid message structure",
-    "Invalid data",
-    "Unexpected message type",
-    "Invalid ECDHE key",
-    "Unwanted peer",
-    "State mismatch, user action required",
-    "Unrecognized OOB message identifier",
-    "Unexpected peer identifier",
-    "No mutually supported protocol version",
-    "No mutually supported cryptosuite",
-    "No mutually supported OOB direction",
-    "HMAC verification failure",
-    "Application-specific error",
-    "Invalid server info",
-    "Invalid server URL",
-    "Invalid peer info"};
-
-/* This 2-D arry is used for state validation.
- * Column number represents the state of Peer and the row number
- * represents the server state
- * The states are in squence as: {UNREGISTERED_STATE, WAITING_FOR_OOB_STATE,
- * OOB_RECEIVED_STATE, RECONNECTING_STATE, REGISTERED_STATE}
- * for both peer and server */
-const int state_machine[][5] = {
-    {VALID, VALID,   VALID,   INVALID, INVALID},
-    {VALID, VALID,   VALID,   INVALID, INVALID},
-    {VALID, VALID,   VALID,   INVALID, INVALID},
-    {VALID, INVALID, INVALID, VALID,   VALID},
-    {VALID, INVALID, INVALID, VALID,   INVALID}
-};
-
-// TODO: Update to latest draft (type 9 -> type 1)
-const int next_request_type[] = {
-    EAP_NOOB_TYPE_1, EAP_NOOB_TYPE_1, EAP_NOOB_TYPE_1, NONE,            NONE,
-    EAP_NOOB_TYPE_1, EAP_NOOB_TYPE_3, EAP_NOOB_TYPE_4, NONE,            NONE,
-    EAP_NOOB_TYPE_1, EAP_NOOB_TYPE_4, EAP_NOOB_TYPE_4, NONE,            NONE,
-    EAP_NOOB_TYPE_1, NONE,            NONE,            EAP_NOOB_TYPE_5, EAP_NOOB_TYPE_5,
-    EAP_NOOB_TYPE_1, NONE,            NONE,            EAP_NOOB_TYPE_5, NONE
-};
-
-/*server state vs message type matrix*/
-// TODO: Update to latest draft (type 9 -> type 1)
-const int state_message_check[NUM_OF_STATES][MAX_MSG_TYPES] = {
-    {VALID, VALID,   VALID,   INVALID,  INVALID,  INVALID,  INVALID,  INVALID, VALID}, //UNREGISTERED_STATE
-    {VALID, VALID,   VALID,   VALID,    VALID,    INVALID,  INVALID,  INVALID, VALID}, //WAITING_FOR_OOB_STATE
-    {VALID, VALID,   VALID,   INVALID,  VALID,    INVALID,  INVALID,  INVALID, VALID}, //OOB_RECEIVED_STATE
-    {VALID, INVALID, INVALID, INVALID,  INVALID,  VALID,    VALID,    VALID,   VALID},   //RECONNECT
-    {VALID, INVALID, INVALID, INVALID,  VALID,    INVALID,  INVALID,  INVALID, VALID}, //REGISTERED_STATE
-};
+/* Common data arrays */
+extern const int error_code[];
+extern const char *error_info[];
+extern const int state_machine[][5];
+extern const int next_request_type[];
+extern const int state_message_check[NUM_OF_STATES][MAX_MSG_TYPES];
 
 #define EAP_NOOB_STATE_VALID                                                              \
     (state_machine[data->server_state][data->peer_state] == VALID)   \
@@ -328,6 +296,6 @@ int eap_noob_db_statements(sqlite3 * db, const char * query);
 int eap_noob_exec_query(struct eap_noob_data * data, const char * query,
                                void (*callback)(struct eap_noob_data *, sqlite3_stmt *),
                                int num_args, ...);
-int eap_noob_ctxt_alloc(struct eap_sm * sm, struct eap_noob_data * data);
+int eap_noob_ctxt_alloc(struct eap_noob_data * data);
 
 #endif /* EAP_NOOB_H */
