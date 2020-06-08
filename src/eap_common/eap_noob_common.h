@@ -62,7 +62,7 @@
 #define INVALID                 0
 #define VALID                   1
 #define NUM_OF_STATES           5
-#define MAX_MSG_TYPES           9
+#define NUM_MSG_TYPES           10
 
 /* OOB direction */
 #define PEER_TO_SERVER          1
@@ -149,8 +149,9 @@ enum {UNREGISTERED_STATE, WAITING_FOR_OOB_STATE, OOB_RECEIVED_STATE, RECONNECTIN
 
 /* Message types, see https://tools.ietf.org/html/draft-ietf-emu-eap-noob-01#section-4.2 */
 // TODO: Update to latest draft, where type 9 is now type 1
-enum {NONE, EAP_NOOB_TYPE_1, EAP_NOOB_TYPE_2, EAP_NOOB_TYPE_3, EAP_NOOB_TYPE_4, EAP_NOOB_TYPE_5,
-    EAP_NOOB_TYPE_6, EAP_NOOB_TYPE_7, EAP_NOOB_TYPE_8, EAP_NOOB_TYPE_9};
+enum {NONE, EAP_NOOB_TYPE_HANDSHAKE, EAP_NOOB_TYPE_INITIAL_PARAMS, EAP_NOOB_TYPE_INITIAL_CRYPTO,
+    EAP_NOOB_TYPE_WAITING, EAP_NOOB_TYPE_COMPLETION_NOOBID, EAP_NOOB_TYPE_COMPLETION_HMAC,
+    EAP_NOOB_TYPE_RECONNECT_PARAMS, EAP_NOOB_TYPE_RECONNECT_CRYPTO, EAP_NOOB_TYPE_RECONNECT_HMAC};
 
 enum eap_noob_err_code {NO_ERROR, E1001, E1002, E1003, E1004, E1007, E2001, E2002,
                         E2003, E2004, E3001, E3002, E3003, E4001, E5001, E5002, E5003, E5004};
@@ -267,7 +268,7 @@ extern const int error_code[];
 extern const char *error_info[];
 extern const int state_machine[][5];
 extern const int next_request_type[];
-extern const int state_message_check[NUM_OF_STATES][MAX_MSG_TYPES];
+extern const int state_message_check[NUM_OF_STATES][NUM_MSG_TYPES];
 
 #define EAP_NOOB_STATE_VALID                                                              \
     (state_machine[data->server_state][data->peer_state] == VALID)   \
