@@ -654,12 +654,12 @@ static struct wpabuf * eap_noob_verify_PeerId(struct eap_noob_data * data, u8  i
 }
 
 /**
- * eap_noob_rsp_type_four : prepares message type four
+ * eap_noob_build_msg_completion_hmac
  * @data : peer data
  * @id   : response message id
  * Returns : pointer to message buffer or null
 **/
-static struct wpabuf * eap_noob_rsp_type_four(const struct eap_noob_data * data, u8 id)
+static struct wpabuf * eap_noob_build_msg_completion_hmac(const struct eap_noob_data * data, u8 id)
 {
     struct wpabuf * json = NULL;
     struct wpabuf * resp = NULL;
@@ -717,12 +717,12 @@ EXIT:
 }
 
 /**
- * eap_noob_rsp_type_three : prepares message type three
+ * eap_noob_build_msg_waiting
  * @data : peer data
  * @id   : response message id
  * Returns : pointer to message buffer or null
 **/
-static struct wpabuf * eap_noob_rsp_type_three(const struct eap_noob_data *data, u8 id)
+static struct wpabuf * eap_noob_build_msg_waiting(const struct eap_noob_data *data, u8 id)
 {
     struct wpabuf * json = NULL;
     struct wpabuf * resp = NULL;
@@ -808,12 +808,12 @@ static int eap_noob_build_JWK(char ** jwk, const char * x_b64)
 }
 
 /**
- * eap_noob_rsp_type_two : prepares message type two
+ * eap_noob_build_msg_initial_crypto
  * @data : peer data
  * @id   : response message id
  * Returns : pointer to message buffer or null
 **/
-static struct wpabuf * eap_noob_rsp_type_two(struct eap_noob_data * data, u8 id)
+static struct wpabuf * eap_noob_build_msg_initial_crypto(struct eap_noob_data * data, u8 id)
 {
     struct wpabuf * json = NULL;
     struct wpabuf * resp = NULL;
@@ -902,12 +902,12 @@ EXIT:
 }
 
 /**
- * eap_noob_rsp_type_one : prepares message type one
+ * eap_noob_build_msg_initial_params
  * @data : peer data
  * @id   : response message id
  * Returns : pointer to message buffer or null
 **/
-static struct wpabuf * eap_noob_rsp_type_one(struct eap_sm *sm, const struct eap_noob_data *data, u8 id)
+static struct wpabuf * eap_noob_build_msg_initial_params(struct eap_sm *sm, const struct eap_noob_data *data, u8 id)
 {
     struct wpabuf * json = NULL;
     struct wpabuf * resp = NULL;
@@ -960,12 +960,12 @@ EXIT:
 }
 
 /**
- * eap_noob_rsp_type_eight : prepares message type eight
+ * eap_noob_build_msg_completion_noobid
  * @data : peer data
  * @id   : response message id
  * Returns : pointer to message buffer or null
 **/
-static struct wpabuf * eap_noob_rsp_type_eight(const struct eap_noob_data * data, u8 id)
+static struct wpabuf * eap_noob_build_msg_completion_noobid(const struct eap_noob_data * data, u8 id)
 {
     struct wpabuf * json = NULL;
     struct wpabuf * resp = NULL;
@@ -1018,7 +1018,7 @@ EXIT:
  * @id     : response message id
  * Returns : pointer to message buffer containing json response as string
  */
-static struct wpabuf * eap_noob_rsp_type_nine(const struct eap_noob_data * data, u8 id)
+static struct wpabuf * eap_noob_build_msg_handshake(const struct eap_noob_data * data, u8 id)
 {
     struct wpabuf * json = NULL;
     struct wpabuf * resp = NULL;
@@ -1066,12 +1066,12 @@ EXIT:
 }
 
 /**
- * eap_noob_rsp_type_five : prepares message type file
+ * eap_noob_build_msg_reconnect_params
  * @data : peer data
  * @id   : response message id
  * Returns : pointer to message buffer or null
 **/
-static struct wpabuf * eap_noob_rsp_type_five(struct eap_sm *sm, const struct eap_noob_data *data, u8 id)
+static struct wpabuf * eap_noob_build_msg_reconnect_params(struct eap_sm *sm, const struct eap_noob_data *data, u8 id)
 {
     struct wpabuf * json = NULL;
     struct wpabuf * resp = NULL;
@@ -1122,12 +1122,12 @@ EXIT:
 
 /**
  * To-Do Based on the cryptosuite and server request decide whether new key has to be derived or not
- * eap_noob_rsp_type_six : prepares message type six
+ * eap_noob_build_msg_reconnect_crypto
  * @data : peer data
  * @id   : response message id
  * Returns : pointer to message buffer or null
 **/
-static struct wpabuf * eap_noob_rsp_type_six(struct eap_noob_data * data, u8 id)
+static struct wpabuf * eap_noob_build_msg_reconnect_crypto(struct eap_noob_data * data, u8 id)
 {
     struct wpabuf * json = NULL;
     struct wpabuf * resp = NULL;
@@ -1192,12 +1192,12 @@ EXIT:
 }
 
 /**
- * eap_noob_rsp_type_seven : prepares message type seven
+ * eap_noob_build_msg_reconnect_hmac
  * @data : peer data
  * @id   : response message id
  * Returns : pointer to message buffer or null
 **/
-static struct wpabuf * eap_noob_rsp_type_seven(const struct eap_noob_data * data, u8 id)
+static struct wpabuf * eap_noob_build_msg_reconnect_hmac(const struct eap_noob_data * data, u8 id)
 {
     struct wpabuf * json = NULL;
     struct wpabuf * resp = NULL;
@@ -1255,13 +1255,13 @@ EXIT:
 }
 
 /**
- * eap_noob_req_type_seven :  Decodes request type seven
+ * eap_noob_process_msg_reconnect_hmac
  * @eap_sm : eap statemachine context
  * @data : peer data
  * @id   : response message id
  * Returns : pointer to message buffer or null
 **/
-static struct wpabuf * eap_noob_req_type_seven(struct eap_sm * sm, struct eap_noob_data * data, u8 id)
+static struct wpabuf * eap_noob_process_msg_reconnect_hmac(struct eap_sm * sm, struct eap_noob_data * data, u8 id)
 {
     struct wpabuf * resp = NULL;
     u8 * mac = NULL;
@@ -1289,7 +1289,7 @@ static struct wpabuf * eap_noob_req_type_seven(struct eap_sm * sm, struct eap_no
         resp = eap_noob_err_msg(data, id); return resp;
     }
 
-    resp = eap_noob_rsp_type_seven(data, id);
+    resp = eap_noob_build_msg_reconnect_hmac(data, id);
     data->peer_state = REGISTERED_STATE;
     eap_noob_config_change(sm, data);
 
@@ -1300,13 +1300,13 @@ static struct wpabuf * eap_noob_req_type_seven(struct eap_sm * sm, struct eap_no
 }
 
 /**
- * eap_noob_req_type_six :  Decodes request type six
+ * eap_noob_process_msg_reconnect_crypto
  * @eap_sm : eap statemachine context
  * @data : peer data
  * @id   : response message id
  * Returns : pointer to message buffer or null
 **/
-static struct wpabuf * eap_noob_req_type_six(struct eap_sm *sm, struct eap_noob_data *data, u8 id)
+static struct wpabuf * eap_noob_process_msg_reconnect_crypto(struct eap_sm *sm, struct eap_noob_data *data, u8 id)
 {
     struct wpabuf * resp = NULL;
 
@@ -1323,7 +1323,7 @@ static struct wpabuf * eap_noob_req_type_six(struct eap_sm *sm, struct eap_noob_
     }
 
     if (NULL == (resp = eap_noob_verify_PeerId(data,id))) {
-        resp = eap_noob_rsp_type_six(data,id);
+        resp = eap_noob_build_msg_reconnect_crypto(data,id);
     }
 
     data->rcvd_params = 0;
@@ -1331,13 +1331,13 @@ static struct wpabuf * eap_noob_req_type_six(struct eap_sm *sm, struct eap_noob_
 }
 
 /**
- * eap_noob_req_type_five :  Decodes request type five
+ * eap_noob_process_msg_reconnect_params
  * @eap_sm : eap statemachine context
  * @data : peer data
  * @id   : response message id
  * Returns : pointer to message buffer or null
 **/
-static struct wpabuf * eap_noob_req_type_five(struct eap_sm *sm, struct eap_noob_data * data, u8 id)
+static struct wpabuf * eap_noob_process_msg_reconnect_params(struct eap_sm *sm, struct eap_noob_data * data, u8 id)
 {
     struct wpabuf * resp = NULL;
 
@@ -1355,7 +1355,7 @@ static struct wpabuf * eap_noob_req_type_five(struct eap_sm *sm, struct eap_noob
     data->peerid = os_strdup(data->peerid);
     //TODO: handle eap_noob failure scenario
     if (SUCCESS == eap_noob_check_compatibility(data))
-        resp = eap_noob_rsp_type_five(sm,data, id);
+        resp = eap_noob_build_msg_reconnect_params(sm,data, id);
     else
         resp = eap_noob_err_msg(data,id);
 
@@ -1372,13 +1372,13 @@ static int eap_noob_exec_noobid_queries(struct eap_noob_data * data)
 }
 
 /**
- * eap_noob_req_type_four :  Decodes request type four
+ * eap_noob_process_msg_completion_hmac
  * @eap_sm : eap statemachine context
  * @data : peer data
  * @id   : response message id
  * Returns : pointer to message buffer or null
 **/
-static struct wpabuf * eap_noob_req_type_four(struct eap_sm * sm, struct eap_noob_data * data, u8 id)
+static struct wpabuf * eap_noob_process_msg_completion_hmac(struct eap_sm * sm, struct eap_noob_data * data, u8 id)
 {
     struct wpabuf * resp = NULL;
     u8 * mac = NULL;
@@ -1424,7 +1424,7 @@ static struct wpabuf * eap_noob_req_type_four(struct eap_sm * sm, struct eap_noo
         return resp;
     }
 
-    resp = eap_noob_rsp_type_four(data, id);
+    resp = eap_noob_build_msg_completion_hmac(data, id);
     data->peer_state = REGISTERED_STATE;
     eap_noob_config_change(sm, data);
     if (resp == NULL) wpa_printf(MSG_DEBUG, "EAP-NOOB: Null resp 4");
@@ -1437,13 +1437,13 @@ static struct wpabuf * eap_noob_req_type_four(struct eap_sm * sm, struct eap_noo
 }
 
 /**
- * eap_noob_req_type_three :  Decodes request type three
+ * eap_noob_process_msg_waiting
  * @eap_sm : eap statemachine context
  * @data : peer data
  * @id   : response message id
  * Returns : pointer to message buffer or null
 **/
-static struct wpabuf * eap_noob_req_type_three(struct eap_sm * sm, struct eap_noob_data * data, u8 id)
+static struct wpabuf * eap_noob_process_msg_waiting(struct eap_sm * sm, struct eap_noob_data * data, u8 id)
 {
     struct wpabuf * resp = NULL;
 
@@ -1458,7 +1458,7 @@ static struct wpabuf * eap_noob_req_type_three(struct eap_sm * sm, struct eap_no
     }
 
     if (NULL == (resp = eap_noob_verify_PeerId(data,id))) {
-        resp = eap_noob_rsp_type_three(data,id);
+        resp = eap_noob_build_msg_waiting(data,id);
         if (0 != data->minsleep) eap_noob_assign_waittime(sm,data);
     }
 
@@ -1466,12 +1466,12 @@ static struct wpabuf * eap_noob_req_type_three(struct eap_sm * sm, struct eap_no
 }
 
 /**
- * eap_noob_req_type_two :  Decodes request type two
+ * eap_noob_process_msg_initial_crypto
  * @eap_sm : eap statemachine context
  * @data : peer data
  * @id : pointer to response message buffer or null
 **/
-static struct wpabuf * eap_noob_req_type_two(struct eap_sm *sm, struct eap_noob_data * data, u8 id)
+static struct wpabuf * eap_noob_process_msg_initial_crypto(struct eap_sm *sm, struct eap_noob_data * data, u8 id)
 {
     struct wpabuf *resp = NULL;
 
@@ -1487,7 +1487,7 @@ static struct wpabuf * eap_noob_req_type_two(struct eap_sm *sm, struct eap_noob_
     }
 
     if (NULL == (resp = eap_noob_verify_PeerId(data,id))) {
-        resp = eap_noob_rsp_type_two(data,id);
+        resp = eap_noob_build_msg_initial_crypto(data,id);
         data->peer_state = WAITING_FOR_OOB_STATE;
         // Generate the MAC input string such that it can be used for
         // calculating the Hoob
@@ -1501,13 +1501,13 @@ static struct wpabuf * eap_noob_req_type_two(struct eap_sm *sm, struct eap_noob_
 }
 
 /**
- * eap_noob_req_type_one :  Decodes request type one
+ * eap_noob_process_msg_initial_params
  * @eap_sm : eap statemachine context
  * @data : peer data
  * @id   : response message id
  * Returns : pointer to message buffer or null
 **/
-static struct wpabuf * eap_noob_req_type_one(struct eap_sm * sm, struct eap_noob_data * data, u8 id)
+static struct wpabuf * eap_noob_process_msg_initial_params(struct eap_sm * sm, struct eap_noob_data * data, u8 id)
 {
     struct wpabuf * resp = NULL;
     char * url = NULL;
@@ -1546,7 +1546,7 @@ static struct wpabuf * eap_noob_req_type_one(struct eap_sm * sm, struct eap_noob
     wpa_printf(MSG_DEBUG, "EAP-NOOB: Realm %s", data->realm);
 
     if (SUCCESS == eap_noob_check_compatibility(data)) {
-        resp = eap_noob_rsp_type_one(sm,data, id);
+        resp = eap_noob_build_msg_initial_params(sm,data, id);
     } else resp = eap_noob_err_msg(data,id);
 
     data->rcvd_params = 0;
@@ -1554,13 +1554,13 @@ static struct wpabuf * eap_noob_req_type_one(struct eap_sm * sm, struct eap_noob
 }
 
 /**
- * eap_noob_req_type_eight :  Decodes request type eight
+ * eap_noob_process_msg_completion_noobid
  * @eap_sm : eap statemachine context
  * @data : peer data
  * @id   : response message id
  * Returns : pointer to message buffer or null
 **/
-static struct wpabuf * eap_noob_req_type_eight(struct eap_sm *sm, struct eap_noob_data * data, u8 id)
+static struct wpabuf * eap_noob_process_msg_completion_noobid(struct eap_sm *sm, struct eap_noob_data * data, u8 id)
 {
     struct wpabuf *resp = NULL;
 
@@ -1571,38 +1571,38 @@ static struct wpabuf * eap_noob_req_type_eight(struct eap_sm *sm, struct eap_noo
     }
 
     if (NULL == (resp = eap_noob_verify_PeerId(data,id))) {
-        resp = eap_noob_rsp_type_eight(data,id);
+        resp = eap_noob_build_msg_completion_noobid(data,id);
     }
     return resp;
 }
 
 /**
- * eap_noob_req_type_nine :  Decodes request type nine
+ * eap_noob_process_msg_handshake
  * @eap_sm : eap statemachine context
  * @data : peer data
  * @id   : response message id
  * Returns : pointer to message buffer or null
 **/
-static struct wpabuf * eap_noob_req_type_nine(struct eap_sm * sm, struct eap_noob_data * data, u8 id)
+static struct wpabuf * eap_noob_process_msg_handshake(struct eap_sm * sm, struct eap_noob_data * data, u8 id)
 {
     struct wpabuf *resp = NULL;
 
-    // Message of type 9 from server does not contain any information,
+    // Common handshake from server does not contain any information,
     // thus the request object does not need to be parsed.
 
-    resp = eap_noob_rsp_type_nine(data, id);
+    resp = eap_noob_build_msg_handshake(data, id);
 
     return resp;
 }
 
 /**
- * eap_noob_req_err_handling :  handle received error message
+ * eap_noob_process_msg_error :  handle received error message
  * @eap_sm : eap statemachine context
  * @data : peer data
  * @id   : response message id
  * Returns : pointer to message buffer or null
 **/
-static void eap_noob_req_err_handling(struct eap_sm *sm, struct eap_noob_data * data, u8 id)
+static void eap_noob_process_msg_error(struct eap_sm *sm, struct eap_noob_data * data, u8 id)
 {
     if (!data->err_code) {
         eap_noob_db_update(data, UPDATE_STATE_ERROR);
@@ -1697,38 +1697,38 @@ static struct wpabuf * eap_noob_process(struct eap_sm * sm, void * priv, struct 
     switch(msgtype) {
         case NONE:
             wpa_printf(MSG_DEBUG, "EAP-NOOB: Error message received");
-            eap_noob_req_err_handling(sm, data, id);
+            eap_noob_process_msg_error(sm, data, id);
             break;
         case EAP_NOOB_TYPE_HANDSHAKE:
-            resp = eap_noob_req_type_nine(sm, data, id);
+            resp = eap_noob_process_msg_handshake(sm, data, id);
             break;
         case EAP_NOOB_TYPE_INITIAL_PARAMS:
-            resp = eap_noob_req_type_one(sm, data, id);
+            resp = eap_noob_process_msg_initial_params(sm, data, id);
             break;
         case EAP_NOOB_TYPE_INITIAL_CRYPTO:
-            resp = eap_noob_req_type_two(sm, data, id);
+            resp = eap_noob_process_msg_initial_crypto(sm, data, id);
             break;
         case EAP_NOOB_TYPE_WAITING:
-            resp = eap_noob_req_type_three(sm, data, id);
+            resp = eap_noob_process_msg_waiting(sm, data, id);
             break;
         case EAP_NOOB_TYPE_COMPLETION_HMAC:
-            resp = eap_noob_req_type_four(sm, data, id);
+            resp = eap_noob_process_msg_completion_hmac(sm, data, id);
             if(data->err_code == NO_ERROR) {
                 ret->methodState = METHOD_MAY_CONT;
                 ret->decision = DECISION_COND_SUCC;
             }
             break;
         case EAP_NOOB_TYPE_COMPLETION_NOOBID:
-            resp = eap_noob_req_type_eight(sm, data, id);
+            resp = eap_noob_process_msg_completion_noobid(sm, data, id);
             break;
         case EAP_NOOB_TYPE_RECONNECT_PARAMS:
-            resp = eap_noob_req_type_five(sm, data, id);
+            resp = eap_noob_process_msg_reconnect_params(sm, data, id);
             break;
         case EAP_NOOB_TYPE_RECONNECT_CRYPTO:
-            resp = eap_noob_req_type_six(sm, data, id);
+            resp = eap_noob_process_msg_reconnect_crypto(sm, data, id);
             break;
         case EAP_NOOB_TYPE_RECONNECT_HMAC:
-            resp = eap_noob_req_type_seven(sm, data, id);
+            resp = eap_noob_process_msg_reconnect_hmac(sm, data, id);
             if(data->err_code == NO_ERROR) {
                 ret->methodState = METHOD_MAY_CONT;
                 ret->decision = DECISION_COND_SUCC;
