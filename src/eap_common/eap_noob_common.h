@@ -206,7 +206,7 @@ struct eap_noob_data {
     u32 version;
     u32 cryptosuites[MAX_SUP_CSUITES];
     u32 cryptosuite;
-    u32 cryptosuiteprev;
+    u32 cryptosuite_prev;
     u32 dirs;
     u32 dirp;
     u32 sleeptime;

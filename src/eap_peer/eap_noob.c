@@ -185,17 +185,14 @@ static void eap_noob_decode_vers_cryptosuites(struct eap_noob_data * data,
 
 static void columns_persistentstate(struct eap_noob_data * data, sqlite3_stmt * stmt)
 {
-
-    char * Vers, * Cryptosuites;
     data->ssid = os_strdup((char *)sqlite3_column_text(stmt, 0));
     data->peerid = os_strdup((char *)sqlite3_column_text(stmt, 1));
-    data->peerid = os_strdup(data->peerid);
-    Vers = os_strdup((char *)sqlite3_column_text(stmt, 2));
-    Cryptosuites = os_strdup((char *)sqlite3_column_text(stmt, 3));
-    data->realm = os_strdup((char *) sqlite3_column_text(stmt, 4));
-    data->realm = os_strdup(data->realm);
-    data->Kz = os_memdup(sqlite3_column_blob(stmt,5), KZ_LEN);
-    eap_noob_decode_vers_cryptosuites(data, Vers, Cryptosuites);
+    data->version = sqlite3_column_int(stmt, 2);
+    data->cryptosuite = sqlite3_column_int(stmt, 3);
+    data->cryptosuite_prev = sqlite3_column_int(stmt, 4);
+    data->realm = os_strdup((char *) sqlite3_column_text(stmt, 5));
+    data->Kz = os_memdup(sqlite3_column_blob(stmt, 6), KZ_LEN);
+    data->KzPrev = os_memdup(sqlite3_column_blob(stmt, 7), KZ_LEN);
     data->peer_state = RECONNECTING_STATE;
 }
 
@@ -204,11 +201,9 @@ static void columns_ephemeralstate(struct eap_noob_data * data, sqlite3_stmt * s
     char * Vers, * Cryptosuites;
     data->ssid = os_strdup((char *)sqlite3_column_text(stmt, 0));
     data->peerid = os_strdup((char *) sqlite3_column_text(stmt, 1));
-    data->peerid = os_strdup(data->peerid);
     Vers = os_strdup((char *)sqlite3_column_text(stmt, 2));
     Cryptosuites = os_strdup((char *)sqlite3_column_text(stmt, 3));
     data->realm = os_strdup((char *) sqlite3_column_text(stmt, 4));
-    data->realm = os_strdup(data->realm);
     data->dirs = sqlite3_column_int(stmt, 5);
     data->server_info = os_strdup((char *) sqlite3_column_text(stmt, 6));
     data->kdf_nonce_data->Ns = os_memdup(sqlite3_column_blob(stmt, 7), NONCE_LEN);
@@ -228,14 +223,11 @@ static void columns_ephemeralnoob(struct eap_noob_data * data, sqlite3_stmt * st
 {
     data->ssid = os_strdup((char *)sqlite3_column_text(stmt, 0));
     data->peerid = os_strdup((char *) sqlite3_column_text(stmt, 1));
-    data->peerid = os_strdup(data->peerid);
     data->oob_data->NoobId_b64 = os_strdup((char *)sqlite3_column_text(stmt, 2));
     data->oob_data->Noob_b64 = os_strdup((char *)sqlite3_column_text(stmt, 3));
     data->oob_data->Hoob_b64 = os_strdup((char *)sqlite3_column_text(stmt, 4));
     //sent time
 }
-
-
 
 static int eap_noob_get_key(struct eap_noob_data * data)
 {
@@ -1546,12 +1538,10 @@ static struct wpabuf * eap_noob_req_type_one(struct eap_sm * sm, struct eap_noob
     }
 
     data->peerid = os_strdup(data->peerid_rcvd);
-    if (NULL != data->realm && strlen(data->realm) > 0) {
-//If the server sent a realm, then add it to the peer attr
-        data->realm = os_strdup(data->realm);
-    } else {
+
+    // If the server did not send a realm, use the default realm instead
+    if (!data->realm || strlen(data->realm) == 0) {
         data->realm = os_strdup(DEFAULT_REALM);
-        data->realm = os_strdup("");
     }
     wpa_printf(MSG_DEBUG, "EAP-NOOB: Realm %s", data->realm);
 

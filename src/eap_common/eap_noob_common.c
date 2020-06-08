@@ -276,16 +276,6 @@ void eap_noob_verify_param_len(struct eap_noob_data * data)
                         eap_noob_set_error(data, E1003);
                     }
                     break;
-                case NONCE_RCVD:
-                    if (data->kdf_nonce_data->Np && strlen((char *)data->kdf_nonce_data->Np) > NONCE_LEN) {
-                        wpa_printf(MSG_DEBUG, "EAP-NOOB: Np is too long");
-                        eap_noob_set_error(data, E1003);
-                    }
-                    if (data->kdf_nonce_data->Ns && strlen((char *)data->kdf_nonce_data->Ns) > NONCE_LEN) {
-                        wpa_printf(MSG_DEBUG, "EAP-NOOB: Ns is too long");
-                        eap_noob_set_error(data, E1003);
-                    }
-                    break;
                 case MAC_RCVD:
                     if (strlen(data->mac) > MAC_LEN) {
                         eap_noob_set_error(data, E1003);
@@ -452,16 +442,25 @@ void eap_noob_decode_obj(struct eap_noob_data * data, struct json_token * root)
                 // Ns or Ns2
                 else if (!os_strcmp(key, NS) || !os_strcmp(key, NS2)) {
                     size_t decode_len = eap_noob_Base64Decode(val_str, &data->kdf_nonce_data->Ns);
-                    if (decode_len) {
+                    if (decode_len > NONCE_LEN) {
+                        wpa_printf(MSG_DEBUG, "EAP-NOOB: Ns is too long");
+                        eap_noob_set_error(data, E1003);
+                        goto EXIT;
+                    } else {
                         data->rcvd_params |= NONCE_RCVD;
                     }
                 }
                 // Np or Np2
                 else if (!os_strcmp(key, NP) || !os_strcmp(key, NP2)) {
                     size_t decode_len = eap_noob_Base64Decode(val_str, &data->kdf_nonce_data->Np);
-                    if (decode_len) {
+                    if (decode_len > NONCE_LEN) {
+                        wpa_printf(MSG_DEBUG, "EAP-NOOB: Np is too long");
+                        eap_noob_set_error(data, E1003);
+                        goto EXIT;
+                    } else {
                         data->rcvd_params |= NONCE_RCVD;
                     }
+
                 }
                 // NoobId
                 else if (!os_strcmp(key, NOOBID)) {

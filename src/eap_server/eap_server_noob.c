@@ -441,6 +441,7 @@ static void eap_noob_assign_config(char * conf_name, char * conf_value, struct e
         EAP_NOOB_FREE(server_conf.realm);
         server_conf.len_realm = strlen(conf_value);
         server_conf.realm = (char *) os_strdup(conf_value);
+        data->realm = os_strdup(server_conf.realm);
         data->config_params |= REALM_RCVD;
         wpa_printf(MSG_DEBUG, "EAP-NOOB: FILE  READ= %s", server_conf.realm);
     }
@@ -2080,6 +2081,8 @@ static void eap_noob_rsp_type_nine(struct eap_noob_data * data)
                 result = FAILURE;
                 goto EXIT;
             }
+
+            wpa_printf(MSG_DEBUG, "EAP-NOOB: Local Hoob input = %s", input);
 
             addr[0] = (u8 *) input;
             len[0] = os_strlen(input);
