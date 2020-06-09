@@ -93,7 +93,7 @@ static void columns_persistentstate(struct eap_noob_data * data, sqlite3_stmt * 
 {
     wpa_printf(MSG_DEBUG, "EAP-NOOB: In %s", __func__);
     data->version = sqlite3_column_int(stmt, 1);
-    data->cryptosuite = sqlite3_column_int(stmt, 2);
+    data->cryptosuitep = sqlite3_column_int(stmt, 2);
     data->realm = os_strdup((char *) sqlite3_column_text(stmt, 3));
     data->Kz = os_memdup(sqlite3_column_blob(stmt, 4), KZ_LEN);
     data->server_state = sqlite3_column_int(stmt, 5);
@@ -104,7 +104,7 @@ static void columns_persistentstate(struct eap_noob_data * data, sqlite3_stmt * 
 static void columns_ephemeralstate(struct eap_noob_data * data, sqlite3_stmt * stmt)
 {
     data->version = sqlite3_column_int(stmt, 1);
-    data->cryptosuite = sqlite3_column_int(stmt, 2);
+    data->cryptosuitep = sqlite3_column_int(stmt, 2);
     data->realm = os_strdup((char *) sqlite3_column_text(stmt, 3));
     data->dirp = sqlite3_column_int(stmt, 4);
     data->peer_info = os_strdup((char *) sqlite3_column_text(stmt, 5));
@@ -183,14 +183,14 @@ static int eap_noob_db_functions(struct eap_noob_data * data, u8 type)
             os_snprintf(query, MAX_LINE_SIZE, "INSERT INTO PersistentState (PeerId, Verp, Cryptosuitep, Realm, Kz, "
                     "ServerState, PeerInfo) VALUES(?, ?, ?, ?, ?, ?, ?)");
             ret = eap_noob_exec_query(data, query, NULL, 14, TEXT, data->peerid, INT, data->version,
-                  INT, data->cryptosuite, TEXT, server_conf.realm, BLOB, KZ_LEN, data->kdf_out->Kz, INT,
+                  INT, data->cryptosuitep, TEXT, server_conf.realm, BLOB, KZ_LEN, data->kdf_out->Kz, INT,
                   data->server_state, TEXT, data->peer_info);
             break;
         case UPDATE_INITIALEXCHANGE_INFO:
             os_snprintf(query, MAX_LINE_SIZE, "INSERT INTO EphemeralState ( PeerId, Verp, Cryptosuitep, Realm, Dirp, PeerInfo, "
                   "Ns, Np, Z, MacInput, SleepCount, ServerState, JwkServer, JwkPeer, OobRetries) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)");
             ret = eap_noob_exec_query(data, query, NULL, 33, TEXT, data->peerid, INT, data->version,
-                  INT, data->cryptosuite, TEXT, server_conf.realm, INT, data->dirp, TEXT,
+                  INT, data->cryptosuitep, TEXT, server_conf.realm, INT, data->dirp, TEXT,
                   data->peer_info, BLOB, NONCE_LEN, data->kdf_nonce_data->Ns, BLOB, NONCE_LEN,
                   data->kdf_nonce_data->Np, BLOB, ECDH_SHARED_SECRET_LEN, data->ecdh_exchange_data->shared_key,
                   TEXT, data->mac_input_str, INT, data->sleep_count, INT, data->server_state,

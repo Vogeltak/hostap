@@ -188,8 +188,8 @@ static void columns_persistentstate(struct eap_noob_data * data, sqlite3_stmt * 
     data->ssid = os_strdup((char *)sqlite3_column_text(stmt, 0));
     data->peerid = os_strdup((char *)sqlite3_column_text(stmt, 1));
     data->version = sqlite3_column_int(stmt, 2);
-    data->cryptosuite = sqlite3_column_int(stmt, 3);
-    data->cryptosuite_prev = sqlite3_column_int(stmt, 4);
+    data->cryptosuitep = sqlite3_column_int(stmt, 3);
+    data->cryptosuitep_prev = sqlite3_column_int(stmt, 4);
     data->realm = os_strdup((char *) sqlite3_column_text(stmt, 5));
     data->Kz = os_memdup(sqlite3_column_blob(stmt, 6), KZ_LEN);
     data->KzPrev = os_memdup(sqlite3_column_blob(stmt, 7), KZ_LEN);
@@ -353,7 +353,7 @@ int eap_noob_check_compatibility(struct eap_noob_data *data)
     }
 
     for(count = 0; count < MAX_SUP_CSUITES ; count ++) {
-        if (0 != (data->cryptosuite & data->cryptosuites[count])) {
+        if (0 != (data->cryptosuitep & data->cryptosuites[count])) {
             csuite_supp = 1; break;
         }
     }
@@ -530,7 +530,7 @@ static int eap_noob_update_persistentstate(struct eap_noob_data * data)
 
 
     err -= (FAILURE == eap_noob_exec_query(data, query, NULL, 20, TEXT, data->ssid, TEXT, data->peerid,
-            INT, data->version, INT, data->cryptosuite, INT, data->cryptosuite, TEXT, data->realm, BLOB, KZ_LEN, data->kdf_out->Kz, BLOB, KZ_LEN, data->kdf_out->Kz,
+            INT, data->version, INT, data->cryptosuitep, INT, data->cryptosuitep, TEXT, data->realm, BLOB, KZ_LEN, data->kdf_out->Kz, BLOB, KZ_LEN, data->kdf_out->Kz,
             INT, data->peer_state));
     if (err < 0) { ret = FAILURE; goto EXIT; }
 EXIT:
@@ -941,7 +941,7 @@ static struct wpabuf * eap_noob_build_msg_initial_params(struct eap_sm *sm, cons
     json_value_sep(json);
     json_add_string(json, PEERID, data->peerid);
     json_value_sep(json);
-    json_add_int(json, CRYPTOSUITEP, data->cryptosuite);
+    json_add_int(json, CRYPTOSUITEP, data->cryptosuitep);
     json_value_sep(json);
     json_add_int(json, DIRP, data->dirp);
     json_value_sep(json);
@@ -1103,7 +1103,7 @@ static struct wpabuf * eap_noob_build_msg_reconnect_params(struct eap_sm *sm, co
     json_value_sep(json);
     json_add_string(json, PEERID, data->peerid);
     json_value_sep(json);
-    json_add_int(json, CRYPTOSUITEP, data->cryptosuite);
+    json_add_int(json, CRYPTOSUITEP, data->cryptosuitep);
     json_value_sep(json);
 
     // Helper method to add JSON object to the wpabuf
@@ -1850,9 +1850,9 @@ static void eap_noob_assign_config(char * conf_name,char * conf_value, struct ea
         wpa_printf(MSG_DEBUG, "EAP-NOOB: FILE  READ= %d",data->version);
     }
     else if (0 == strcmp("Csuite",conf_name)) {
-        data->cryptosuite = (int) strtol(conf_value, NULL, 10);
+        data->cryptosuitep = (int) strtol(conf_value, NULL, 10);
         data->config_params |= CRYPTOSUITE_RCVD;
-        wpa_printf(MSG_DEBUG, "EAP-NOOB: FILE  READ= %d",data->cryptosuite);
+        wpa_printf(MSG_DEBUG, "EAP-NOOB: FILE  READ= %d",data->cryptosuitep);
     }
     else if (0 == strcmp("OobDirs",conf_name)) {
         data->dirp = (int) strtol(conf_value, NULL, 10);
@@ -1947,7 +1947,7 @@ static int eap_noob_handle_incomplete_conf(struct eap_noob_data * data)
     if (! (data->config_params & VERSION_RCVD))
         data->version = VERSION_ONE;
     if (! (data->config_params & CRYPTOSUITE_RCVD))
-        data->cryptosuite = SUITE_ONE;
+        data->cryptosuitep = SUITE_ONE;
     if (! (data->config_params & DIR_RCVD))
         data->dirp = PEER_TO_SERVER;
     if (! (data->config_params & MAX_OOB_RETRIES_RCVD))
@@ -1990,7 +1990,7 @@ static int eap_noob_read_config(struct eap_sm *sm, struct eap_noob_data * data)
     free(buff);
     fclose(conf_file);
 
-    if ((data->version >MAX_SUP_VER) || (data->cryptosuite > MAX_SUP_CSUITES) ||
+    if ((data->version >MAX_SUP_VER) || (data->cryptosuitep > MAX_SUP_CSUITES) ||
         (data->dirp > BOTH_DIRECTIONS)) {
         wpa_printf(MSG_ERROR, "EAP-NOOB: Incorrect confing value");
         return FAILURE;
