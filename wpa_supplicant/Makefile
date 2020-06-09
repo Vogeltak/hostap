@@ -757,6 +757,22 @@ NEED_DH_GROUPS_ALL=y
 NEED_AES_CBC=y
 endif
 
+ifdef CONFIG_EAP_NOOB
+ifeq ($(CONFIG_EAP_NOOB), dyn)
+CFLAGS += -DEAP_NOOB_DYNAMIC
+CFLAGS += -DINT_DISP="\"eth0\""
+EAPDYN += ../src/eap_peer/eap_noob.so
+else
+CFLAGS += -DEAP_NOOB
+CFLAGS += -DINT_DISP="\"eth0\""
+OBJS += ../src/eap_peer/eap_noob.o
+OBJS += ../src/eap_common/eap_noob_common.o
+endif
+LIBS += -lsqlite3
+NEED_JSON=y
+CONFIG_IEEE8021X_EAPOL=y
+endif
+
 ifdef CONFIG_WPS
 # EAP-WSC
 CFLAGS += -DCONFIG_WPS -DEAP_WSC
