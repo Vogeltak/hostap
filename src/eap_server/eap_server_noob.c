@@ -1123,11 +1123,13 @@ static struct wpabuf * eap_noob_build_msg_reconnect_params(struct eap_noob_data 
         }
     }
     json_end_array(json);
+    json_value_sep(json);
     if (strcmp(server_conf.realm, DEFAULT_REALM)) {
         json_add_string(json, REALM, server_conf.realm);
     } else {
         json_add_string(json, REALM, "");
     }
+    json_value_sep(json);
     // Helper method to add the server information object to the wpabuf
     eap_noob_prepare_server_info_json(data->server_config_params, json, SERVERINFO);
     json_end_object(json);
@@ -2053,14 +2055,9 @@ static void eap_noob_processs_msg_handshake(struct eap_noob_data * data)
         goto EXIT;
     }
 
-    // TODO: Are these checks really necessary? Aren't these the only states in
-    // which a message of type 9 is exchanged anyhow?
-    if (data->server_state == UNREGISTERED_STATE ||
-        data->server_state == WAITING_FOR_OOB_STATE ||
-        data->server_state == RECONNECTING_STATE) {
-        if (FAILURE == (result = eap_noob_read_config(data))) {
-            goto EXIT;
-        }
+    // Retrieve data set in the configuration file
+    if (FAILURE == (result = eap_noob_read_config(data))) {
+        goto EXIT;
     }
 
     // Check whether new OOB data has arrived, if so, verify the Hoob
@@ -2192,8 +2189,6 @@ static void eap_noob_process(struct eap_sm * sm, void * priv, struct wpabuf * re
         wpa_printf(MSG_ERROR, "EAP-NOOB: Decoding gave error: %s", error_info[data->err_code]);
         goto EXIT;
     }
-
-    wpa_printf(MSG_ERROR, "EAP-NOOB: Passed decode_obj");
 
     /* TODO : replce switch case with function pointers. */
     switch (data->recv_msg) {

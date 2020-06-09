@@ -345,8 +345,11 @@ int eap_noob_check_compatibility(struct eap_noob_data *data)
     u8 vers_supported = 0;
     u8 csuite_supp = 0;
 
-    if (0 == (data->dirs & data->dirp)) {
-        data->err_code = E3003; return FAILURE;
+    // Only verify directions during the initial exchange.
+    if (data->peer_state != RECONNECTING_STATE) {
+        if (0 == (data->dirs & data->dirp)) {
+            data->err_code = E3003; return FAILURE;
+        }
     }
 
     for(count = 0; count < MAX_SUP_CSUITES ; count ++) {
@@ -567,7 +570,11 @@ static int eap_noob_create_db(struct eap_sm *sm, struct eap_noob_data * data)
             if (ret == FAILURE || ret == EMPTY ) {
                 wpa_printf(MSG_DEBUG, "EAP-NOOB: SSID not present in any tables");
                 return SUCCESS;
-            }  else { data->peer_state = REGISTERED_STATE; }
+            } else {
+                // TODO: Why set the peer state explicitly to registered, while
+                // it just reads out the peer state from the database?
+                //data->peer_state = REGISTERED_STATE;
+            }
         } else {
             if (FAILURE != eap_noob_exec_query(data, QUERY_EPHEMERALNOOB, columns_ephemeralnoob, 2,
                            TEXT, wpa_s->current_ssid->ssid)) {
@@ -1349,6 +1356,7 @@ static struct wpabuf * eap_noob_process_msg_reconnect_params(struct eap_sm *sm, 
 
     if (data->rcvd_params != TYPE_FIVE_PARAMS) {
         data->err_code = E1002;
+        wpa_printf(MSG_DEBUG, "EAP-NOOB: Mismatch in received parameters");
         resp = eap_noob_err_msg(data,id);
         return resp;
     }
@@ -2246,10 +2254,10 @@ static void eap_noob_deinit_for_reauth(struct eap_sm *sm, void *priv)
  */
 static void * eap_noob_init_for_reauth(struct eap_sm * sm, void * priv)
 {
-     wpa_printf(MSG_DEBUG, "EAP-NOOB: Entering %s", __func__);
-     struct eap_noob_data * data=priv;
-     data->peer_state = RECONNECTING_STATE;
-     return data;
+    wpa_printf(MSG_DEBUG, "EAP-NOOB: Entering %s", __func__);
+    struct eap_noob_data * data=priv;
+    data->peer_state = RECONNECTING_STATE;
+    return data;
 }
 
 /**
