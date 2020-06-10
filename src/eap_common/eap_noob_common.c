@@ -62,11 +62,11 @@ const int state_machine[][5] = {
 };
 
 const int next_request_type[] = {
-    EAP_NOOB_TYPE_INITIAL_PARAMS, EAP_NOOB_TYPE_INITIAL_PARAMS,  EAP_NOOB_TYPE_INITIAL_PARAMS,  NONE,                           NONE,
-    EAP_NOOB_TYPE_INITIAL_PARAMS, EAP_NOOB_TYPE_WAITING,         EAP_NOOB_TYPE_COMPLETION_HMAC, NONE,                           NONE,
-    EAP_NOOB_TYPE_INITIAL_PARAMS, EAP_NOOB_TYPE_COMPLETION_HMAC, EAP_NOOB_TYPE_COMPLETION_HMAC, NONE,                           NONE,
-    EAP_NOOB_TYPE_INITIAL_PARAMS, NONE,                          NONE,                          EAP_NOOB_TYPE_RECONNECT_PARAMS, EAP_NOOB_TYPE_RECONNECT_PARAMS,
-    EAP_NOOB_TYPE_INITIAL_PARAMS, NONE,                          NONE,                          EAP_NOOB_TYPE_RECONNECT_PARAMS, NONE
+    EAP_NOOB_TYPE_2, EAP_NOOB_TYPE_2, EAP_NOOB_TYPE_2, NONE,            NONE,
+    EAP_NOOB_TYPE_2, EAP_NOOB_TYPE_4, EAP_NOOB_TYPE_6, NONE,            NONE,
+    EAP_NOOB_TYPE_2, EAP_NOOB_TYPE_6, EAP_NOOB_TYPE_6, NONE,            NONE,
+    EAP_NOOB_TYPE_2, NONE,            NONE,            EAP_NOOB_TYPE_7, EAP_NOOB_TYPE_7,
+    EAP_NOOB_TYPE_2, NONE,            NONE,            EAP_NOOB_TYPE_7, NONE
 };
 
 /* state vs message type matrix*/
@@ -522,7 +522,7 @@ void eap_noob_decode_obj(struct eap_noob_data * data, struct json_token * root)
                 }
                 // Cryptosuitep
                 else if (!os_strcmp(key, CRYPTOSUITEP)) {
-                    data->cryptosuite = val_int;
+                    data->cryptosuitep = val_int;
                     data->rcvd_params |= CRYPTOSUITE_RCVD;
                 }
                 // SleepTime
@@ -800,7 +800,7 @@ char * eap_noob_build_mac_input(const struct eap_noob_data * data,
     }
 
     // Cryptosuite chosen by peer
-    wpabuf_printf(mac_json, ",%u", data->cryptosuite);
+    wpabuf_printf(mac_json, ",%u", data->cryptosuitep);
 
     // Direction supported by the peer
     if (state == RECONNECTING_STATE) {

@@ -698,7 +698,7 @@ static struct wpabuf * eap_noob_build_msg_completion_hmac(const struct eap_noob_
     }
 
     json_start_object(json, NULL);
-    json_add_int(json, TYPE, EAP_NOOB_TYPE_COMPLETION_HMAC);
+    json_add_int(json, TYPE, EAP_NOOB_TYPE_6);
     json_value_sep(json);
     json_add_string(json, PEERID, data->peerid);
     json_value_sep(json);
@@ -748,7 +748,7 @@ static struct wpabuf * eap_noob_build_msg_waiting(const struct eap_noob_data *da
     }
 
     json_start_object(json, NULL);
-    json_add_int(json, TYPE, EAP_NOOB_TYPE_WAITING);
+    json_add_int(json, TYPE, EAP_NOOB_TYPE_4);
     json_value_sep(json);
     json_add_string(json, PEERID, data->peerid);
     json_end_object(json);
@@ -881,7 +881,7 @@ static struct wpabuf * eap_noob_build_msg_initial_crypto(struct eap_noob_data * 
     }
 
     json_start_object(json, NULL);
-    json_add_int(json, TYPE, EAP_NOOB_TYPE_INITIAL_CRYPTO);
+    json_add_int(json, TYPE, EAP_NOOB_TYPE_3);
     json_value_sep(json);
     json_add_string(json, PEERID, data->peerid);
     json_value_sep(json);
@@ -935,7 +935,7 @@ static struct wpabuf * eap_noob_build_msg_initial_params(struct eap_sm *sm, cons
     }
 
     json_start_object(json, NULL);
-    json_add_int(json, TYPE, EAP_NOOB_TYPE_INITIAL_PARAMS);
+    json_add_int(json, TYPE, EAP_NOOB_TYPE_2);
     json_value_sep(json);
     json_add_int(json, VERP, data->version);
     json_value_sep(json);
@@ -993,7 +993,7 @@ static struct wpabuf * eap_noob_build_msg_completion_noobid(const struct eap_noo
     }
 
     json_start_object(json, NULL);
-    json_add_int(json, TYPE, EAP_NOOB_TYPE_COMPLETION_NOOBID);
+    json_add_int(json, TYPE, EAP_NOOB_TYPE_5);
     json_value_sep(json);
     json_add_string(json, PEERID, data->peerid);
     json_value_sep(json);
@@ -1043,7 +1043,7 @@ static struct wpabuf * eap_noob_build_msg_handshake(const struct eap_noob_data *
     }
 
     json_start_object(json, NULL);
-    json_add_int(json, TYPE, EAP_NOOB_TYPE_HANDSHAKE);
+    json_add_int(json, TYPE, EAP_NOOB_TYPE_1);
     json_value_sep(json);
 
     // Only include PeerId if peer is not in Unregistered state (0)
@@ -1099,7 +1099,7 @@ static struct wpabuf * eap_noob_build_msg_reconnect_params(struct eap_sm *sm, co
     json_start_object(json, NULL);
     json_add_int(json, VERP, data->version);
     json_value_sep(json);
-    json_add_int(json, TYPE, EAP_NOOB_TYPE_RECONNECT_PARAMS);
+    json_add_int(json, TYPE, EAP_NOOB_TYPE_7);
     json_value_sep(json);
     json_add_string(json, PEERID, data->peerid);
     json_value_sep(json);
@@ -1173,7 +1173,7 @@ static struct wpabuf * eap_noob_build_msg_reconnect_crypto(struct eap_noob_data 
     }
 
     json_start_object(json, NULL);
-    json_add_int(json, TYPE, EAP_NOOB_TYPE_RECONNECT_CRYPTO);
+    json_add_int(json, TYPE, EAP_NOOB_TYPE_8);
     json_value_sep(json);
     json_add_string(json, PEERID, data->peerid);
     json_value_sep(json);
@@ -1237,7 +1237,7 @@ static struct wpabuf * eap_noob_build_msg_reconnect_hmac(const struct eap_noob_d
     }
 
     json_start_object(json, NULL);
-    json_add_int(json, TYPE, EAP_NOOB_TYPE_RECONNECT_HMAC);
+    json_add_int(json, TYPE, EAP_NOOB_TYPE_9);
     json_value_sep(json);
     json_add_string(json, PEERID, data->peerid);
     json_value_sep(json);
@@ -1687,7 +1687,7 @@ static struct wpabuf * eap_noob_process(struct eap_sm * sm, void * priv, struct 
         resp = eap_noob_err_msg(data, id);
         wpa_printf(MSG_DEBUG, "EAP-NOOB: State mismatch"); goto EXIT;
     } else if ((data->peer_state == WAITING_FOR_OOB_STATE || data->peer_state == OOB_RECEIVED_STATE) &&
-                msgtype == EAP_NOOB_TYPE_INITIAL_PARAMS) {
+                msgtype == EAP_NOOB_TYPE_2) {
         if (FAILURE == eap_noob_db_update(data, DELETE_SSID)) {
             wpa_printf(MSG_DEBUG, "EAP-NOOB: Failed to delete SSID"); goto EXIT;
         }
@@ -1707,35 +1707,35 @@ static struct wpabuf * eap_noob_process(struct eap_sm * sm, void * priv, struct 
             wpa_printf(MSG_DEBUG, "EAP-NOOB: Error message received");
             eap_noob_process_msg_error(sm, data, id);
             break;
-        case EAP_NOOB_TYPE_HANDSHAKE:
+        case EAP_NOOB_TYPE_1:
             resp = eap_noob_process_msg_handshake(sm, data, id);
             break;
-        case EAP_NOOB_TYPE_INITIAL_PARAMS:
+        case EAP_NOOB_TYPE_2:
             resp = eap_noob_process_msg_initial_params(sm, data, id);
             break;
-        case EAP_NOOB_TYPE_INITIAL_CRYPTO:
+        case EAP_NOOB_TYPE_3:
             resp = eap_noob_process_msg_initial_crypto(sm, data, id);
             break;
-        case EAP_NOOB_TYPE_WAITING:
+        case EAP_NOOB_TYPE_4:
             resp = eap_noob_process_msg_waiting(sm, data, id);
             break;
-        case EAP_NOOB_TYPE_COMPLETION_HMAC:
+        case EAP_NOOB_TYPE_6:
             resp = eap_noob_process_msg_completion_hmac(sm, data, id);
             if(data->err_code == NO_ERROR) {
                 ret->methodState = METHOD_MAY_CONT;
                 ret->decision = DECISION_COND_SUCC;
             }
             break;
-        case EAP_NOOB_TYPE_COMPLETION_NOOBID:
+        case EAP_NOOB_TYPE_5:
             resp = eap_noob_process_msg_completion_noobid(sm, data, id);
             break;
-        case EAP_NOOB_TYPE_RECONNECT_PARAMS:
+        case EAP_NOOB_TYPE_7:
             resp = eap_noob_process_msg_reconnect_params(sm, data, id);
             break;
-        case EAP_NOOB_TYPE_RECONNECT_CRYPTO:
+        case EAP_NOOB_TYPE_8:
             resp = eap_noob_process_msg_reconnect_crypto(sm, data, id);
             break;
-        case EAP_NOOB_TYPE_RECONNECT_HMAC:
+        case EAP_NOOB_TYPE_9:
             resp = eap_noob_process_msg_reconnect_hmac(sm, data, id);
             if(data->err_code == NO_ERROR) {
                 ret->methodState = METHOD_MAY_CONT;
