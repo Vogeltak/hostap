@@ -1277,7 +1277,7 @@ static struct wpabuf * eap_noob_process_type_9(struct eap_sm * sm, struct eap_no
     if (!data) {
         wpa_printf(MSG_DEBUG, "EAP-NOOB: Input arguments NULL for function %s",__func__); return NULL;
     }
-    if (data->rcvd_params != TYPE_SEVEN_PARAMS) {
+    if (data->rcvd_params != TYPE_NINE_PARAMS) {
         data->err_code = E1002;
         resp = eap_noob_err_msg(data,id); return resp;
     }
@@ -1323,7 +1323,7 @@ static struct wpabuf * eap_noob_process_type_8(struct eap_sm *sm, struct eap_noo
     }
     wpa_printf(MSG_DEBUG, "EAP-NOOB: OOB PROCESS REQ TYPE 6");
 
-    if (data->rcvd_params != TYPE_SIX_PARAMS) {
+    if (data->rcvd_params != TYPE_EIGHT_PARAMS) {
         data->err_code = E1002;
         resp = eap_noob_err_msg(data,id);
         return resp;
@@ -1354,7 +1354,7 @@ static struct wpabuf * eap_noob_process_type_7(struct eap_sm *sm, struct eap_noo
     }
     wpa_printf(MSG_DEBUG, "EAP-NOOB: OOB PROCESS REQ TYPE 5");
 
-    if (data->rcvd_params != TYPE_FIVE_PARAMS) {
+    if (data->rcvd_params != TYPE_SEVEN_PARAMS) {
         data->err_code = E1002;
         wpa_printf(MSG_DEBUG, "EAP-NOOB: Mismatch in received parameters");
         resp = eap_noob_err_msg(data,id);
@@ -1397,7 +1397,7 @@ static struct wpabuf * eap_noob_process_type_6(struct eap_sm * sm, struct eap_no
     }
     wpa_printf(MSG_DEBUG, "EAP-NOOB: Entering %s", __func__);
 
-    if (data->rcvd_params != TYPE_FOUR_PARAMS) {
+    if (data->rcvd_params != TYPE_SIX_PARAMS) {
         data->err_code = E1002;
         resp = eap_noob_err_msg(data,id); return resp;
     }
@@ -1455,7 +1455,7 @@ static struct wpabuf * eap_noob_process_type_5(struct eap_sm *sm, struct eap_noo
 {
     struct wpabuf *resp = NULL;
 
-    if (data->rcvd_params != TYPE_HINT_PARAMS) {
+    if (data->rcvd_params != TYPE_FIVE_PARAMS) {
         data->err_code = E1002;
         resp = eap_noob_err_msg(data,id);
         return resp;
@@ -1483,7 +1483,7 @@ static struct wpabuf * eap_noob_process_type_4(struct eap_sm * sm, struct eap_no
     }
     wpa_printf(MSG_DEBUG, "EAP-NOOB: Entering %s", __func__);
 
-    if (data->rcvd_params != TYPE_THREE_PARAMS) {
+    if (data->rcvd_params != TYPE_FOUR_PARAMS) {
         data->err_code = E1002;
         resp = eap_noob_err_msg(data,id); return resp;
     }
@@ -1512,7 +1512,7 @@ static struct wpabuf * eap_noob_process_type_3(struct eap_sm *sm, struct eap_noo
     }
     wpa_printf(MSG_DEBUG, "Entering %s", __func__);
 
-    if (data->rcvd_params != TYPE_TWO_PARAMS) {
+    if (data->rcvd_params != TYPE_THREE_PARAMS) {
         data->err_code = E1002;
         resp = eap_noob_err_msg(data,id); return resp;
     }
@@ -1550,7 +1550,7 @@ static struct wpabuf * eap_noob_process_type_2(struct eap_sm * sm, struct eap_no
     }
     wpa_printf(MSG_DEBUG, "EAP-NOOB: Entering %s", __func__);
 
-    if (data->rcvd_params != TYPE_ONE_PARAMS) {
+    if (data->rcvd_params != TYPE_TWO_PARAMS) {
         data->err_code = E1002;
         resp = eap_noob_err_msg(data,id); return resp;
     }

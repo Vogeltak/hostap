@@ -1778,7 +1778,7 @@ static void eap_noob_process_type_nine(struct eap_noob_data * data)
     wpa_printf(MSG_DEBUG, "EAP-NOOB: Response Processed/NOOB-FR-3");
 
     /* TODO :  validate MAC address along with peerID */
-    if (data->rcvd_params != TYPE_SEVEN_PARAMS) {
+    if (data->rcvd_params != TYPE_NINE_PARAMS) {
         eap_noob_set_error(data, E1002);
         eap_noob_set_done(data, NOT_DONE); return;
     }
@@ -1817,7 +1817,7 @@ static void eap_noob_process_type_eight(struct eap_noob_data * data)
         return ;
     }
     wpa_printf(MSG_DEBUG, "EAP-NOOB: Response Processed/NOOB-FR-2");
-    if (data->rcvd_params != TYPE_SIX_PARAMS) {
+    if (data->rcvd_params != TYPE_EIGHT_PARAMS) {
         eap_noob_set_error(data, E1002);
         eap_noob_set_done(data, NOT_DONE); return;
     }
@@ -1847,7 +1847,7 @@ static void eap_noob_process_type_seven(struct eap_noob_data * data)
     if ((data->err_code != NO_ERROR)) {
         eap_noob_set_done(data, NOT_DONE); return;
     }
-    if (data->rcvd_params != TYPE_FIVE_PARAMS) {
+    if (data->rcvd_params != TYPE_SEVEN_PARAMS) {
         eap_noob_set_error(data, E1002);
         eap_noob_set_done(data, NOT_DONE); return;
     }
@@ -1873,7 +1873,7 @@ static void eap_noob_process_type_six(struct eap_noob_data * data)
     wpa_printf(MSG_DEBUG, "EAP-NOOB: Entering %s", __func__);
     dir = (data->dirs & data->dirp);
     /* TODO :  validate MAC address along with peerID */
-    if (data->rcvd_params != TYPE_FOUR_PARAMS) {
+    if (data->rcvd_params != TYPE_SIX_PARAMS) {
         eap_noob_set_error(data,E1002);
         eap_noob_set_done(data, NOT_DONE); return;
     }
@@ -1911,7 +1911,7 @@ static void eap_noob_process_type_five(struct eap_noob_data * data)
         return;
     }
 
-    if (data->rcvd_params != TYPE_EIGHT_PARAMS) {
+    if (data->rcvd_params != TYPE_FIVE_PARAMS) {
         eap_noob_set_error(data,E1002);
         eap_noob_set_done(data, NOT_DONE);
         return;
@@ -1946,7 +1946,7 @@ static void eap_noob_process_type_four(struct eap_noob_data * data)
     }
     wpa_printf(MSG_DEBUG, "EAP-NOOB: Response Processed/NOOB-WE-3");
 
-    if (data->rcvd_params != TYPE_THREE_PARAMS) {
+    if (data->rcvd_params != TYPE_FOUR_PARAMS) {
         eap_noob_set_error(data,E1002);
         eap_noob_set_done(data, NOT_DONE);
         return;
@@ -1978,7 +1978,7 @@ static void eap_noob_process_type_three(struct eap_noob_data * data)
     }
     wpa_printf(MSG_DEBUG, "EAP-NOOB: Response Processed/NOOB-IE-2");
 
-    if (data->rcvd_params != TYPE_TWO_PARAMS) {
+    if (data->rcvd_params != TYPE_THREE_PARAMS) {
         eap_noob_set_error(data,E1002);
         wpa_printf(MSG_DEBUG, "EAP-NOOB: Did not match type 2 parameters");
         eap_noob_set_done(data, NOT_DONE); return;
@@ -2032,7 +2032,7 @@ static void eap_noob_process_type_two(struct eap_sm *sm,
     if ((data->err_code != NO_ERROR)) {
         eap_noob_set_done(data, NOT_DONE); return;
     }
-    if (data->rcvd_params != TYPE_ONE_PARAMS) {
+    if (data->rcvd_params != TYPE_TWO_PARAMS) {
         eap_noob_set_error(data,E1002);
         eap_noob_set_done(data, NOT_DONE); return;
     }
