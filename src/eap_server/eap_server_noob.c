@@ -935,12 +935,12 @@ EXIT:
 }
 
 /**
- * eap_noob_build_msg_reconnect_hmac :
+ * Build EAP-Request type 9: Reconnect Exchange HMAC
  * @data : server data
- * @id  :
- * Returns :
+ * @id  : EAP Packet ID
+ * Returns : Pointer to allocated EAP-Request packet, or NULL if not.
 **/
-static struct wpabuf * eap_noob_build_msg_reconnect_hmac(struct eap_noob_data * data, u8 id)
+static struct wpabuf * eap_noob_build_type_nine(struct eap_noob_data * data, u8 id)
 {
     struct wpabuf * json = NULL;
     struct wpabuf * resp = NULL;
@@ -1002,13 +1002,13 @@ EXIT:
 }
 
 /**
- * eap_oob_req_type_six - Build the EAP-Request/Fast Reconnect 2.
+ * Build EAP-Request type 8: Reconnect Exchange ECDH key exchange
  * @sm: Pointer to EAP state machine allocated with eap_peer_sm_init()
  * @data: Pointer to EAP-NOOB data
  * @id: EAP packet ID
  * Returns: Pointer to allocated EAP-Request packet, or NULL if not.
  **/
-static struct wpabuf * eap_noob_build_msg_reconnect_crypto(struct eap_noob_data * data, u8 id)
+static struct wpabuf * eap_noob_build_type_eight(struct eap_noob_data * data, u8 id)
 {
     struct wpabuf * json = NULL;
     struct wpabuf * resp = NULL;
@@ -1080,12 +1080,12 @@ EXIT:
 
 /**
  * TODO send Cryptosuites only if it has changed;
- * eap_oob_req_type_five - Build the EAP-Request/Fast Reconnect 1.
+ * Build the EAP-Request type 7: Reconnect Exchange parameter negotiation
  * @data: Pointer to EAP-NOOB data
  * @id: EAP packet ID
  * Returns: Pointer to allocated EAP-Request packet, or NULL if not.
  **/
-static struct wpabuf * eap_noob_build_msg_reconnect_params(struct eap_noob_data * data, u8 id)
+static struct wpabuf * eap_noob_build_type_seven(struct eap_noob_data * data, u8 id)
 {
     struct wpabuf * json = NULL;
     struct wpabuf * resp = NULL;
@@ -1151,12 +1151,12 @@ EXIT:
 }
 
 /**
- * eap_oob_req_type_four - Build the EAP-Request
+ * Build EAP-Request type 6: Completion Exchange HMAC
  * @data: Pointer to EAP-NOOB data
  * @id: EAP packet ID
  * Returns: Pointer to allocated EAP-Request packet, or NULL if not.
  **/
-static struct wpabuf * eap_noob_build_msg_completion_hmac(struct eap_noob_data * data, u8 id)
+static struct wpabuf * eap_noob_build_type_six(struct eap_noob_data * data, u8 id)
 {
     struct wpabuf * json = NULL;
     struct wpabuf * resp = NULL;
@@ -1221,12 +1221,59 @@ EXIT:
 }
 
 /**
- * eap_oob_req_type_three - Build the EAP-Request
+ * Build EAP-Request type 5: Completion Exchange NoobId discovery
+ * @data: Pointer to private EAP-NOOB data
+ * @id: EAP response to be processed (eapRespData)
+ * Returns: Pointer to allocated EAP-Request packet, or NULL if not.
+ **/
+static struct wpabuf * eap_noob_build_type_five(struct eap_noob_data * data, u8 id)
+{
+    struct wpabuf * json = NULL;
+    struct wpabuf * resp = NULL;
+    char * json_str = NULL;
+    size_t len = 100 + strlen(TYPE) + strlen(PEERID) + MAX_PEER_ID_LEN;
+
+    if (!data) {
+        wpa_printf(MSG_DEBUG, "EAP-NOOB: Input arguments NULL for function %s",__func__);
+        return NULL;
+    }
+
+    wpa_printf(MSG_DEBUG, "EAP-NOOB: Building message request type 8");
+
+    json = wpabuf_alloc(len);
+    if (!json) {
+        goto EXIT;
+    }
+
+    json_start_object(json, NULL);
+    json_add_int(json, TYPE, EAP_NOOB_TYPE_5);
+    json_value_sep(json);
+    json_add_string(json, PEERID, data->peerid);
+    json_end_object(json);
+
+    json_str = strndup(wpabuf_head(json), wpabuf_len(json));
+    len = os_strlen(json_str);
+
+    resp = eap_msg_alloc(EAP_VENDOR_IETF, EAP_TYPE_NOOB, len, EAP_CODE_REQUEST, id);
+    if (!resp) {
+        wpa_printf(MSG_DEBUG, "EAP-NOOB: Failed to allocate memory for NoobId hint response");
+        goto EXIT;
+    }
+
+    wpabuf_put_data(resp, json_str, len);
+EXIT:
+    wpabuf_free(json);
+    EAP_NOOB_FREE(json_str);
+    return resp;
+}
+
+/**
+ * Build EAP-Request type 4: Waiting Exchange message
  * @data: Pointer to EAP-NOOB data
  * @id: EAP packet ID
  * Returns: Pointer to allocated EAP-Request packet, or NULL if not.
  **/
-static struct wpabuf * eap_noob_build_msg_waiting(struct eap_noob_data * data, u8 id)
+static struct wpabuf * eap_noob_build_type_four(struct eap_noob_data * data, u8 id)
 {
     struct wpabuf * json = NULL;
     struct wpabuf * resp = NULL;
@@ -1276,7 +1323,7 @@ EXIT:
 }
 
 /**
- *  eap_noob_build_JWK : Builds a JWK object to send in the inband message
+ *  Builds a JWK object to send in the inband message
  *  @jwk : output json string
  *  @x_64 : x co-ordinate in base64url format
  *  Returns : FAILURE/SUCCESS
@@ -1320,13 +1367,13 @@ static int eap_noob_build_JWK(char ** jwk, const char * x_b64)
 }
 
 /**
- * eap_oob_req_type_two - Build the EAP-Request/Initial Exchange 2.
+ * Build EAP-Request type 3: Initial Exchange ECDH key exchange
  * @sm: Pointer to EAP state machine allocated with eap_peer_sm_init()
  * @data: Pointer to EAP-NOOB data
  * @id: EAP packet ID
  * Returns: Pointer to allocated EAP-Request packet, or NULL if not.
  **/
-static struct wpabuf * eap_noob_build_msg_initial_crypto(struct eap_noob_data *data, u8 id)
+static struct wpabuf * eap_noob_build_type_three(struct eap_noob_data *data, u8 id)
 {
     struct wpabuf * json = NULL;
     struct wpabuf * resp = NULL;
@@ -1413,13 +1460,13 @@ EXIT:
 }
 
 /**
- * eap_oob_req_type_one - Build the EAP-Request/Initial Exchange 1.
+ * Build EAP-Request type 2: Initial Exchange parameter negotiation
  * @sm: Pointer to EAP state machine allocated with eap_peer_sm_init()
  * @data: Pointer to EAP-NOOB data
  * @id: EAP packet ID
  * Returns: Pointer to allocated EAP-Request packet, or NULL if not.
  **/
-static struct wpabuf * eap_noob_build_msg_initial_params(struct eap_noob_data * data, u8 id)
+static struct wpabuf * eap_noob_build_type_two(struct eap_noob_data * data, u8 id)
 {
     struct wpabuf * json = NULL;
     struct wpabuf * resp = NULL;
@@ -1494,59 +1541,12 @@ EXIT:
 }
 
 /**
- * eap_noob_build_msg_completion_noobid -
- * @data: Pointer to private EAP-NOOB data
- * @id: EAP response to be processed (eapRespData)
- * Returns: Pointer to allocated EAP-Request packet, or NULL if not.
- **/
-static struct wpabuf * eap_noob_build_msg_completion_noobid(struct eap_noob_data * data, u8 id)
-{
-    struct wpabuf * json = NULL;
-    struct wpabuf * resp = NULL;
-    char * json_str = NULL;
-    size_t len = 100 + strlen(TYPE) + strlen(PEERID) + MAX_PEER_ID_LEN;
-
-    if (!data) {
-        wpa_printf(MSG_DEBUG, "EAP-NOOB: Input arguments NULL for function %s",__func__);
-        return NULL;
-    }
-
-    wpa_printf(MSG_DEBUG, "EAP-NOOB: Building message request type 8");
-
-    json = wpabuf_alloc(len);
-    if (!json) {
-        goto EXIT;
-    }
-
-    json_start_object(json, NULL);
-    json_add_int(json, TYPE, EAP_NOOB_TYPE_5);
-    json_value_sep(json);
-    json_add_string(json, PEERID, data->peerid);
-    json_end_object(json);
-
-    json_str = strndup(wpabuf_head(json), wpabuf_len(json));
-    len = os_strlen(json_str);
-
-    resp = eap_msg_alloc(EAP_VENDOR_IETF, EAP_TYPE_NOOB, len, EAP_CODE_REQUEST, id);
-    if (!resp) {
-        wpa_printf(MSG_DEBUG, "EAP-NOOB: Failed to allocate memory for NoobId hint response");
-        goto EXIT;
-    }
-
-    wpabuf_put_data(resp, json_str, len);
-EXIT:
-    wpabuf_free(json);
-    EAP_NOOB_FREE(json_str);
-    return resp;
-}
-
-/**
  * Prepare handshake message type request (for PeerId and PeerState)
  * @data: Pointer to private EAP-NOOB data
  * @id: EAP response to be processed (eapRespData)
  * Return: Pointer to allocated EAP-Request packet, or NULL if an error occurred
  */
-static struct wpabuf * eap_noob_build_msg_handshake(struct eap_noob_data * data, u8 id)
+static struct wpabuf * eap_noob_build_type_one(struct eap_noob_data * data, u8 id)
 {
     struct wpabuf * json = NULL;
     struct wpabuf * resp = NULL;
@@ -1608,31 +1608,31 @@ static struct wpabuf * eap_noob_buildReq(struct eap_sm * sm, void * priv, u8 id)
             return eap_noob_err_msg(data,id);
 
         case EAP_NOOB_TYPE_1:
-            return eap_noob_build_msg_handshake(data, id);
+            return eap_noob_build_type_one(data, id);
 
         case EAP_NOOB_TYPE_2:
-            return eap_noob_build_msg_initial_params(data, id);
+            return eap_noob_build_type_two(data, id);
 
         case EAP_NOOB_TYPE_3:
-            return eap_noob_build_msg_initial_crypto(data, id);
+            return eap_noob_build_type_three(data, id);
 
         case EAP_NOOB_TYPE_4:
-            return eap_noob_build_msg_waiting(data, id);
+            return eap_noob_build_type_four(data, id);
 
         case EAP_NOOB_TYPE_5:
-            return eap_noob_build_msg_completion_noobid(data, id);
+            return eap_noob_build_type_five(data, id);
 
         case EAP_NOOB_TYPE_6:
-            return eap_noob_build_msg_completion_hmac(data, id);
+            return eap_noob_build_type_six(data, id);
 
         case EAP_NOOB_TYPE_7:
-            return eap_noob_build_msg_reconnect_params(data, id);
+            return eap_noob_build_type_seven(data, id);
 
         case EAP_NOOB_TYPE_8:
-            return eap_noob_build_msg_reconnect_crypto(data, id);
+            return eap_noob_build_type_eight(data, id);
 
         case EAP_NOOB_TYPE_9:
-            return eap_noob_build_msg_reconnect_hmac(data, id);
+            return eap_noob_build_type_nine(data, id);
 
         default:
             wpa_printf(MSG_DEBUG, "EAP-NOOB: Unknown type in buildReq");
@@ -1764,10 +1764,10 @@ int eap_noob_FindIndex(int value)
 }
 
 /**
- * eap_oob_rsp_type_seven - Process EAP-Response
+ * Process EAP-Response type 9: Reconnect Exchange HMAC
  * @data: Pointer to private EAP-NOOB data
  **/
-static void eap_noob_processs_msg_reconnect_hmac(struct eap_noob_data * data)
+static void eap_noob_process_type_nine(struct eap_noob_data * data)
 {
     u8 * mac = NULL; char * mac_b64 = NULL;
 
@@ -1807,10 +1807,10 @@ EXIT:
 
 
 /**
- * eap_oob_rsp_type_six - Process EAP-Response/Fast Reconnect 2
+ * Process EAP-Response 8: Reconnect Exchange ECDH key exchange
  * @data: Pointer to private EAP-NOOB data
  **/
-static void eap_noob_processs_msg_reconnect_crypto(struct eap_noob_data * data)
+static void eap_noob_process_type_eight(struct eap_noob_data * data)
 {
     if (!data) {
         wpa_printf(MSG_DEBUG, "EAP-NOOB: Input arguments NULL for function %s",__func__);
@@ -1832,10 +1832,10 @@ static void eap_noob_processs_msg_reconnect_crypto(struct eap_noob_data * data)
 }
 
 /**
- * eap_oob_rsp_type_five - Process EAP-Response Type 5
+ * Process EAP-Response Type 7: Reconnect Exchange parameter negotiation
  * @data: Pointer to private EAP-NOOB data
  **/
-static void eap_noob_processs_msg_reconnect_params(struct eap_noob_data * data)
+static void eap_noob_process_type_seven(struct eap_noob_data * data)
 {
     if (!data) {
         wpa_printf(MSG_DEBUG, "EAP-NOOB: Input arguments NULL for function %s",__func__);
@@ -1859,10 +1859,10 @@ static void eap_noob_processs_msg_reconnect_params(struct eap_noob_data * data)
 }
 
 /**
- * eap_oob_rsp_type_four - Process EAP-Response Type 4
+ * Process EAP-Response Type 6: Completion Exchange HMAC
  * @data: Pointer to private EAP-NOOB data
  **/
-static void eap_noob_processs_msg_completion_hmac(struct eap_noob_data * data)
+static void eap_noob_process_type_six(struct eap_noob_data * data)
 {
     u8 * mac = NULL; char * mac_b64 = NULL; int dir = 0;
 
@@ -1901,10 +1901,44 @@ EXIT:
 }
 
 /**
- * eap_oob_rsp_type_three - Process EAP-Response Type 3
+ * Process EAP-Response type 5: NoobId discovery in the Completion Exchange
  * @data: Pointer to private EAP-NOOB data
  **/
-static void eap_noob_processs_msg_waiting(struct eap_noob_data * data)
+static void eap_noob_process_type_five(struct eap_noob_data * data)
+{
+    if ((data->err_code != NO_ERROR)) {
+        eap_noob_set_done(data, NOT_DONE);
+        return;
+    }
+
+    if (data->rcvd_params != TYPE_EIGHT_PARAMS) {
+        eap_noob_set_error(data,E1002);
+        eap_noob_set_done(data, NOT_DONE);
+        return;
+    }
+
+    if (eap_noob_verify_peerId(data) != SUCCESS) {
+        eap_noob_set_error(data,E2004);
+        eap_noob_set_done(data, NOT_DONE);
+        return;
+    }
+
+    if (!eap_noob_db_functions(data, GET_NOOBID) || NULL == data->oob_data->NoobId_b64) {
+        eap_noob_set_error(data,E2003);
+        eap_noob_set_done(data,NOT_DONE);
+    } else {
+        eap_noob_set_done(data, NOT_DONE);
+        data->next_req = EAP_NOOB_TYPE_6;
+    }
+
+    data->rcvd_params = 0;
+}
+
+/**
+ * Process EAP-Response Type 4: Waiting Exchange message
+ * @data: Pointer to private EAP-NOOB data
+ **/
+static void eap_noob_process_type_four(struct eap_noob_data * data)
 {
     if (!data) {
         wpa_printf(MSG_DEBUG, "EAP-NOOB: Input arguments NULL for function %s",__func__);
@@ -1931,10 +1965,10 @@ static void eap_noob_processs_msg_waiting(struct eap_noob_data * data)
 }
 
 /**
- * eap_oob_rsp_type_two - Process EAP-Response/Initial Exchange 2
+ * Process EAP-Response type 3: Initial Exchange ECDH key exchange
  * @data: Pointer to private EAP-NOOB data
  **/
-static void eap_noob_processs_msg_initial_crypto(struct eap_noob_data * data)
+static void eap_noob_process_type_three(struct eap_noob_data * data)
 {
     size_t secret_len = ECDH_SHARED_SECRET_LEN;
 
@@ -1981,12 +2015,11 @@ static void eap_noob_processs_msg_initial_crypto(struct eap_noob_data * data)
 }
 
 /**
- * eap_oob_rsp_type_one - Process EAP-Response/Initial Exchange 1
+ * Process EAP-Response type 2: Initial Exchange parameter negotiation
+ * @sm: EAP state machine
  * @data: Pointer to private EAP-NOOB data
- * @payload: EAP data received from the peer
- * @payloadlen: Length of the payload
  **/
-static void eap_noob_processs_msg_initial_params(struct eap_sm *sm,
+static void eap_noob_process_type_two(struct eap_sm *sm,
                                   struct eap_noob_data *data)
 {
     /* Check for the supporting cryptosuites, PeerId, version, direction*/
@@ -2010,37 +2043,11 @@ static void eap_noob_processs_msg_initial_params(struct eap_sm *sm,
     data->rcvd_params = 0;
 }
 
-static void eap_noob_processs_msg_completion_noobid(struct eap_noob_data * data)
-{
-    if ((data->err_code != NO_ERROR)) {
-        eap_noob_set_done(data, NOT_DONE);
-        return;
-    }
-
-    if (data->rcvd_params != TYPE_EIGHT_PARAMS) {
-        eap_noob_set_error(data,E1002);
-        eap_noob_set_done(data, NOT_DONE);
-        return;
-    }
-
-    if (eap_noob_verify_peerId(data) != SUCCESS) {
-        eap_noob_set_error(data,E2004);
-        eap_noob_set_done(data, NOT_DONE);
-        return;
-    }
-
-    if (!eap_noob_db_functions(data, GET_NOOBID) || NULL == data->oob_data->NoobId_b64) {
-        eap_noob_set_error(data,E2003);
-        eap_noob_set_done(data,NOT_DONE);
-    } else {
-        eap_noob_set_done(data, NOT_DONE);
-        data->next_req = EAP_NOOB_TYPE_6;
-    }
-
-    data->rcvd_params = 0;
-}
-
-static void eap_noob_processs_msg_handshake(struct eap_noob_data * data)
+/**
+ * Process EAP-Response type 1: Common Handshake
+ * @data: Pointer to private EAP-NOOB data
+ **/
+static void eap_noob_process_type_one(struct eap_noob_data * data)
 {
     int result = SUCCESS;
     char * input = NULL;
@@ -2194,47 +2201,47 @@ static void eap_noob_process(struct eap_sm * sm, void * priv, struct wpabuf * re
     switch (data->recv_msg) {
         case EAP_NOOB_TYPE_1:
             wpa_printf(MSG_DEBUG, "EAP-NOOB: ENTERING NOOB PROCESS TYPE 9");
-            eap_noob_processs_msg_handshake(data);
+            eap_noob_process_type_one(data);
             break;
 
         case EAP_NOOB_TYPE_2:
             wpa_printf(MSG_DEBUG, "EAP-NOOB: ENTERING NOOB PROCESS TYPE 1");
-            eap_noob_processs_msg_initial_params(sm, data);
+            eap_noob_process_type_two(sm, data);
             break;
 
         case EAP_NOOB_TYPE_3:
             wpa_printf(MSG_DEBUG, "EAP-NOOB: ENTERING NOOB PROCESS TYPE 2");
-            eap_noob_processs_msg_initial_crypto(data);
+            eap_noob_process_type_three(data);
             break;
 
         case EAP_NOOB_TYPE_4:
             wpa_printf(MSG_DEBUG, "EAP-NOOB: ENTERING NOOB PROCESS TYPE 3");
-            eap_noob_processs_msg_waiting(data);
+            eap_noob_process_type_four(data);
             break;
 
         case EAP_NOOB_TYPE_5:
             wpa_printf(MSG_DEBUG, "EAP-NOOB: ENTERING NOOB PROCESS TYPE NoobId");
-            eap_noob_processs_msg_completion_noobid(data);
+            eap_noob_process_type_five(data);
             break;
 
         case EAP_NOOB_TYPE_6:
             wpa_printf(MSG_DEBUG, "EAP-NOOB: ENTERING NOOB PROCESS TYPE 4");
-            eap_noob_processs_msg_completion_hmac(data);
+            eap_noob_process_type_six(data);
             break;
 
         case EAP_NOOB_TYPE_7:
             wpa_printf(MSG_DEBUG, "EAP-NOOB: ENTERING NOOB PROCESS TYPE 5");
-            eap_noob_processs_msg_reconnect_params(data);
+            eap_noob_process_type_seven(data);
             break;
 
         case EAP_NOOB_TYPE_8:
             wpa_printf(MSG_DEBUG, "EAP-NOOB: ENTERING NOOB PROCESS TYPE 6");
-            eap_noob_processs_msg_reconnect_crypto(data);
+            eap_noob_process_type_eight(data);
             break;
 
         case EAP_NOOB_TYPE_9:
             wpa_printf(MSG_DEBUG, "EAP-NOOB: ENTERING NOOB PROCESS TYPE 7");
-            eap_noob_processs_msg_reconnect_hmac(data);
+            eap_noob_process_type_nine(data);
             break;
 
         case NONE:
