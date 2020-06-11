@@ -586,6 +586,50 @@ static char * eap_noob_prepare_server_info_string(struct eap_noob_server_config_
     return resp;
 }
 
+
+/**
+ *  Builds a JWK object to send in the inband message
+ *  @jwk : output json string
+ *  @x_64 : x co-ordinate in base64url format
+ *  Returns : FAILURE/SUCCESS
+**/
+static int eap_noob_build_JWK(char ** jwk, const char * x_b64)
+{
+    struct wpabuf * json;
+    size_t len = 500;
+
+    if (!x_b64) {
+        wpa_printf(MSG_DEBUG, "EAP-NOOB: X-coordinate is NULL when building JWK");
+        return FAILURE;
+    }
+
+    json = wpabuf_alloc(len);
+    if (!json) {
+        wpa_printf(MSG_DEBUG, "EAP-NOOB: Failed to allocate memory while building JWK");
+        return FAILURE;
+    }
+
+    json_start_object(json, NULL);
+    json_add_string(json, KEY_TYPE, "EC");
+    json_value_sep(json);
+    json_add_string(json, CURVE, "P-256");
+    json_value_sep(json);
+    json_add_string(json, X_COORDINATE, x_b64);
+    json_end_object(json);
+
+    *jwk = strndup(wpabuf_head(json), wpabuf_len(json));
+    if (!*jwk) {
+        wpa_printf(MSG_DEBUG, "EAP-NOOB: Failed to copy JWK");
+        wpabuf_free(json);
+        return FAILURE;
+    }
+
+    wpabuf_free(json);
+
+    wpa_printf(MSG_DEBUG, "EAP-NOOB: JWK key is %s", *jwk);
+
+    return SUCCESS;
+}
 /**
  * eap_noob_read_config : read configuraions from config file
  * @data : server data
@@ -1024,7 +1068,18 @@ static struct wpabuf * eap_noob_build_type_eight(struct eap_noob_data * data, u8
 
     wpa_printf(MSG_DEBUG, "EAP-NOOB: Entering %s", __func__);
 
-    // Generate server nonce
+    // Determine KeyingMode
+    if (data->cryptosuitep != data->cryptosuitep_prev) {
+        data->keying_mode = KEYING_RECONNECT_EXCHANGE_NEW_CRYPTOSUITE;
+    }
+    // TODO: How to determine when forward secrecy is required?
+    else if (false) {
+        data->keying_mode = KEYING_RECONNECT_EXCHANGE_ECDHE;
+    } else {
+        data->keying_mode = KEYING_RECONNECT_EXCHANGE_NO_ECDHE;
+    }
+
+    // Always generate server nonce
     data->kdf_nonce_data->Ns = os_zalloc(NONCE_LEN);
     int rc = RAND_bytes(data->kdf_nonce_data->Ns, NONCE_LEN);
     unsigned long error = ERR_get_error();
@@ -1042,6 +1097,28 @@ static struct wpabuf * eap_noob_build_type_eight(struct eap_noob_data * data, u8
      * decide whether new public key has to be generated
      * TODO: change get key params and finally store only base 64 encoded public key */
 
+    // If KeyingMode is 2 or 3, generate a fresh ECDH key pair
+    if (data->keying_mode == KEYING_RECONNECT_EXCHANGE_ECDHE
+        || data->keying_mode == KEYING_RECONNECT_EXCHANGE_NEW_CRYPTOSUITE) {
+        // Generate key material
+        if (eap_noob_get_key(data) == FAILURE) {
+            wpa_printf(MSG_DEBUG, "EAP-NOOB: Failed to generate keys");
+            goto EXIT;
+        }
+
+        // Build JWK to represent server
+        if (FAILURE == eap_noob_build_JWK(&data->ecdh_exchange_data->jwk_serv,
+                    data->ecdh_exchange_data->x_b64)) {
+            wpa_printf(MSG_DEBUG, "EAP-NOOB: Failed to generate JWK");
+            goto EXIT;
+        }
+
+        // Increase the length to be allocated to the wpabuf because it will
+        // also contain a JWK object.
+        // TODO: Figure out a good default max length for JWK objects.
+        len += strlen(PKS2) + 500;
+    }
+
     // Create JSON EAP message
 
     json = wpabuf_alloc(len);
@@ -1055,14 +1132,19 @@ static struct wpabuf * eap_noob_build_type_eight(struct eap_noob_data * data, u8
     json_value_sep(json);
     json_add_string(json, PEERID, data->peerid);
     json_value_sep(json);
-    // TODO: Determine keying mode
-    json_add_int(json, KEYINGMODE, 1);
+    json_add_int(json, KEYINGMODE, data->keying_mode);
     json_value_sep(json);
+    // Only include PKs2 if a fresh key pair was generated
+    if (data->keying_mode == KEYING_RECONNECT_EXCHANGE_ECDHE
+        || data->keying_mode == KEYING_RECONNECT_EXCHANGE_NEW_CRYPTOSUITE) {
+        wpabuf_printf(json, "\"%s\":%s", PKS2, data->ecdh_exchange_data->jwk_serv);
+        json_value_sep(json);
+    }
     json_add_string(json, NS2, Ns_b64);
     json_end_object(json);
 
     json_str = strndup(wpabuf_head(json), wpabuf_len(json));
-    len = os_strlen(json_str);
+    len = os_strlen(json_str) + 1;
 
     resp = eap_msg_alloc(EAP_VENDOR_IETF, EAP_TYPE_NOOB, len, EAP_CODE_REQUEST, id);
     if (!resp) {
@@ -1091,7 +1173,7 @@ static struct wpabuf * eap_noob_build_type_seven(struct eap_noob_data * data, u8
     struct wpabuf * resp = NULL;
     char * json_str = NULL;
     size_t len = 100 + strlen(VERS) + MAX_SUP_VER + strlen(PEERID) + MAX_PEER_ID_LEN +
-        strlen(CRYPTOSUITES) + MAX_SUP_CSUITES + strlen(PEERINFO) + MAX_INFO_LEN;
+        strlen(CRYPTOSUITES) + MAX_SUP_CSUITES + strlen(SERVERINFO) + MAX_INFO_LEN;
 
     if (!data) {
         wpa_printf(MSG_DEBUG, "EAP-NOOB: Input arguments NULL for function %s",__func__);
@@ -1129,6 +1211,8 @@ static struct wpabuf * eap_noob_build_type_seven(struct eap_noob_data * data, u8
     } else {
         json_add_string(json, REALM, "");
     }
+    // TODO: Only include ServerInfo if it has changed
+    // TODO: Figure out how to determine whether it has changed compared to what the peer knows
     json_value_sep(json);
     // Helper method to add the server information object to the wpabuf
     eap_noob_prepare_server_info_json(data->server_config_params, json, SERVERINFO);
@@ -1320,50 +1404,6 @@ EXIT:
     wpabuf_free(json);
     EAP_NOOB_FREE(json_str);
     return resp;
-}
-
-/**
- *  Builds a JWK object to send in the inband message
- *  @jwk : output json string
- *  @x_64 : x co-ordinate in base64url format
- *  Returns : FAILURE/SUCCESS
-**/
-static int eap_noob_build_JWK(char ** jwk, const char * x_b64)
-{
-    struct wpabuf * json;
-    size_t len = 500;
-
-    if (!x_b64) {
-        wpa_printf(MSG_DEBUG, "EAP-NOOB: X-coordinate is NULL when building JWK");
-        return FAILURE;
-    }
-
-    json = wpabuf_alloc(len);
-    if (!json) {
-        wpa_printf(MSG_DEBUG, "EAP-NOOB: Failed to allocate memory while building JWK");
-        return FAILURE;
-    }
-
-    json_start_object(json, NULL);
-    json_add_string(json, KEY_TYPE, "EC");
-    json_value_sep(json);
-    json_add_string(json, CURVE, "P-256");
-    json_value_sep(json);
-    json_add_string(json, X_COORDINATE, x_b64);
-    json_end_object(json);
-
-    *jwk = strndup(wpabuf_head(json), wpabuf_len(json));
-    if (!*jwk) {
-        wpa_printf(MSG_DEBUG, "EAP-NOOB: Failed to copy JWK");
-        wpabuf_free(json);
-        return FAILURE;
-    }
-
-    wpabuf_free(json);
-
-    wpa_printf(MSG_DEBUG, "EAP-NOOB: JWK key is %s", *jwk);
-
-    return SUCCESS;
 }
 
 /**
@@ -1817,7 +1857,7 @@ static void eap_noob_process_type_eight(struct eap_noob_data * data)
         return ;
     }
     wpa_printf(MSG_DEBUG, "EAP-NOOB: Response Processed/NOOB-FR-2");
-    if (data->rcvd_params != TYPE_EIGHT_PARAMS) {
+    if ((data->rcvd_params & TYPE_EIGHT_PARAMS) != TYPE_EIGHT_PARAMS) {
         eap_noob_set_error(data, E1002);
         eap_noob_set_done(data, NOT_DONE); return;
     }
@@ -1847,7 +1887,8 @@ static void eap_noob_process_type_seven(struct eap_noob_data * data)
     if ((data->err_code != NO_ERROR)) {
         eap_noob_set_done(data, NOT_DONE); return;
     }
-    if (data->rcvd_params != TYPE_SEVEN_PARAMS) {
+    if ((data->rcvd_params & TYPE_SEVEN_PARAMS) != TYPE_SEVEN_PARAMS) {
+        wpa_printf(MSG_DEBUG, "EAP-NOOB: Message type 7 params do not match");
         eap_noob_set_error(data, E1002);
         eap_noob_set_done(data, NOT_DONE); return;
     }

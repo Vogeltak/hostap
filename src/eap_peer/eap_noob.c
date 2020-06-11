@@ -183,6 +183,50 @@ static void eap_noob_decode_vers_cryptosuites(struct eap_noob_data * data,
     }
 }
 
+/**
+ *  eap_noob_build_JWK : Builds a JWK object to send in the inband message
+ *  @jwk : output json object
+ *  @x_64 : x co-ordinate in base64url format
+ *  Returns : FAILURE/SUCCESS
+**/
+static int eap_noob_build_JWK(char ** jwk, const char * x_b64)
+{
+    struct wpabuf * json;
+    size_t len = 500;
+
+    if (!x_b64) {
+        wpa_printf(MSG_DEBUG, "EAP-NOOB: X-coordinate is NULL when building JWK");
+        return FAILURE;
+    }
+
+    json = wpabuf_alloc(len);
+    if (!json) {
+        wpa_printf(MSG_DEBUG, "EAP-NOOB: Failed to allocate memory while building JWK");
+        return FAILURE;
+    }
+
+    json_start_object(json, NULL);
+    json_add_string(json, KEY_TYPE, "EC");
+    json_value_sep(json);
+    json_add_string(json, CURVE, "Curve25519");
+    json_value_sep(json);
+    json_add_string(json, X_COORDINATE, x_b64);
+    json_end_object(json);
+
+    *jwk = strndup(wpabuf_head(json), wpabuf_len(json));
+    if (!*jwk) {
+        wpa_printf(MSG_DEBUG, "EAP-NOOB: Failed to copy JWK");
+        wpabuf_free(json);
+        return FAILURE;
+    }
+
+    wpabuf_free(json);
+
+    wpa_printf(MSG_DEBUG, "EAP-NOOB: JWK key is %s", *jwk);
+
+    return SUCCESS;
+}
+
 static void columns_persistentstate(struct eap_noob_data * data, sqlite3_stmt * stmt)
 {
     data->ssid = os_strdup((char *)sqlite3_column_text(stmt, 0));
@@ -737,6 +781,7 @@ static struct wpabuf * eap_noob_build_type_8(struct eap_noob_data * data, u8 id)
     char * json_str = NULL;
     size_t len = 100 + strlen(TYPE) + strlen(PEERID) + MAX_PEER_ID_LEN
         + strlen(NP) + NONCE_LEN * 1.5;
+    size_t secret_len = ECDH_SHARED_SECRET_LEN;
     char * Np_b64;
 
     if (!data) {
@@ -760,6 +805,36 @@ static struct wpabuf * eap_noob_build_type_8(struct eap_noob_data * data, u8 id)
     eap_noob_Base64Encode(data->kdf_nonce_data->Np, NONCE_LEN, &Np_b64);
     wpa_printf(MSG_DEBUG, "EAP-NOOB: Nonce %s", Np_b64);
 
+    // If KeyingMode is 2 or 3, generate a fresh ECDH key pair
+    if (data->keying_mode == KEYING_RECONNECT_EXCHANGE_ECDHE
+        || data->keying_mode == KEYING_RECONNECT_EXCHANGE_NEW_CRYPTOSUITE) {
+        // Generate key material
+        if (eap_noob_get_key(data) == FAILURE) {
+            wpa_printf(MSG_DEBUG, "EAP-NOOB: Failed to generate keys");
+            goto EXIT;
+        }
+
+        // Build JWK to represent server
+        if (FAILURE == eap_noob_build_JWK(&data->ecdh_exchange_data->jwk_peer,
+                    data->ecdh_exchange_data->x_b64)) {
+            wpa_printf(MSG_DEBUG, "EAP-NOOB: Failed to generate JWK");
+            goto EXIT;
+        }
+
+        // Derive shared secret and encode in base 64
+        eap_noob_derive_secret(data, &secret_len);
+        data->ecdh_exchange_data->shared_key_b64_len = eap_noob_Base64Encode(
+                    data->ecdh_exchange_data->shared_key,
+                    ECDH_SHARED_SECRET_LEN,
+                    &data->ecdh_exchange_data->shared_key_b64
+                );
+
+        // Increase the length to be allocated to the wpabuf because it will
+        // also contain a JWK object.
+        // TODO: Figure out a good default max length for JWK objects.
+        len += strlen(PKP2) + 500;
+    }
+
     // Create JSON EAP message
 
     json = wpabuf_alloc(len);
@@ -773,6 +848,11 @@ static struct wpabuf * eap_noob_build_type_8(struct eap_noob_data * data, u8 id)
     json_value_sep(json);
     json_add_string(json, PEERID, data->peerid);
     json_value_sep(json);
+    if (data->keying_mode == KEYING_RECONNECT_EXCHANGE_ECDHE
+        || data->keying_mode == KEYING_RECONNECT_EXCHANGE_NEW_CRYPTOSUITE) {
+        wpabuf_printf(json, "\"%s\":%s", PKP2, data->ecdh_exchange_data->jwk_peer);
+        json_value_sep(json);
+    }
     json_add_string(json, NP2, Np_b64);
     json_end_object(json);
 
@@ -826,8 +906,10 @@ static struct wpabuf * eap_noob_build_type_7(struct eap_sm *sm, const struct eap
     json_add_string(json, PEERID, data->peerid);
     json_value_sep(json);
     json_add_int(json, CRYPTOSUITEP, data->cryptosuitep);
-    json_value_sep(json);
 
+    // TODO: Only include the PeerInfo if it has changed
+    // TODO: Figure out how to determine whether it has changed compared to what the server knows
+    json_value_sep(json);
     // Helper method to add JSON object to the wpabuf
     eap_noob_prepare_peer_info_json(sm, data->peer_config_params, json, PEERINFO);
     json_end_object(json);
@@ -957,50 +1039,6 @@ EXIT:
     if (json_str)
         EAP_NOOB_FREE(json_str);
     return resp;
-}
-
-/**
- *  eap_noob_build_JWK : Builds a JWK object to send in the inband message
- *  @jwk : output json object
- *  @x_64 : x co-ordinate in base64url format
- *  Returns : FAILURE/SUCCESS
-**/
-static int eap_noob_build_JWK(char ** jwk, const char * x_b64)
-{
-    struct wpabuf * json;
-    size_t len = 500;
-
-    if (!x_b64) {
-        wpa_printf(MSG_DEBUG, "EAP-NOOB: X-coordinate is NULL when building JWK");
-        return FAILURE;
-    }
-
-    json = wpabuf_alloc(len);
-    if (!json) {
-        wpa_printf(MSG_DEBUG, "EAP-NOOB: Failed to allocate memory while building JWK");
-        return FAILURE;
-    }
-
-    json_start_object(json, NULL);
-    json_add_string(json, KEY_TYPE, "EC");
-    json_value_sep(json);
-    json_add_string(json, CURVE, "Curve25519");
-    json_value_sep(json);
-    json_add_string(json, X_COORDINATE, x_b64);
-    json_end_object(json);
-
-    *jwk = strndup(wpabuf_head(json), wpabuf_len(json));
-    if (!*jwk) {
-        wpa_printf(MSG_DEBUG, "EAP-NOOB: Failed to copy JWK");
-        wpabuf_free(json);
-        return FAILURE;
-    }
-
-    wpabuf_free(json);
-
-    wpa_printf(MSG_DEBUG, "EAP-NOOB: JWK key is %s", *jwk);
-
-    return SUCCESS;
 }
 
 /**
@@ -1323,7 +1361,7 @@ static struct wpabuf * eap_noob_process_type_8(struct eap_sm *sm, struct eap_noo
     }
     wpa_printf(MSG_DEBUG, "EAP-NOOB: OOB PROCESS REQ TYPE 6");
 
-    if (data->rcvd_params != TYPE_EIGHT_PARAMS) {
+    if ((data->rcvd_params & TYPE_EIGHT_PARAMS) != TYPE_EIGHT_PARAMS) {
         data->err_code = E1002;
         resp = eap_noob_err_msg(data,id);
         return resp;
@@ -1354,7 +1392,7 @@ static struct wpabuf * eap_noob_process_type_7(struct eap_sm *sm, struct eap_noo
     }
     wpa_printf(MSG_DEBUG, "EAP-NOOB: OOB PROCESS REQ TYPE 5");
 
-    if (data->rcvd_params != TYPE_SEVEN_PARAMS) {
+    if ((data->rcvd_params & TYPE_SEVEN_PARAMS) != TYPE_SEVEN_PARAMS) {
         data->err_code = E1002;
         wpa_printf(MSG_DEBUG, "EAP-NOOB: Mismatch in received parameters");
         resp = eap_noob_err_msg(data,id);

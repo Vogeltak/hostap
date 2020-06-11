@@ -328,7 +328,7 @@ void eap_noob_decode_obj(struct eap_noob_data * data, struct json_token * root)
 
         switch (child->type) {
             case JSON_OBJECT:
-                // PKp or PKp2
+                // PKp, PKp2, PKs or PKs2
                 if (!os_strcmp(key, PKP) || !os_strcmp(key, PKP2) ||
                     !os_strcmp(key, PKS) || !os_strcmp(key, PKS2)) {
                     struct json_token * child_copy;
@@ -522,6 +522,15 @@ void eap_noob_decode_obj(struct eap_noob_data * data, struct json_token * root)
                 }
                 // Cryptosuitep
                 else if (!os_strcmp(key, CRYPTOSUITEP)) {
+                    // In case there already is a value for cryptosuitep, in
+                    // case of a reconnect exchange, store the old value such
+                    // that it can be used to determine whether a cryptosuite
+                    // update is happening.
+                    // This information is necessary to determine the KeyingMode
+                    // during the reconnect exchange.
+                    if (data->cryptosuitep) {
+                        data->cryptosuitep_prev = data->cryptosuitep;
+                    }
                     data->cryptosuitep = val_int;
                     data->rcvd_params |= CRYPTOSUITE_RCVD;
                 }
