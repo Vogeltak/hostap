@@ -16,6 +16,7 @@
 #define WE_COUNT_RCVD           0x2000
 #define REALM_RCVD              0x4000
 #define ENCODE_RCVD             0x8000
+#define FORWARD_SECRECY_RCVD    0x10001
 
 /* Bitmasks specifying expected parameters for each message */
 #define TYPE_TWO_PARAMS         (PEERID_RCVD|VERSION_RCVD|CRYPTOSUITE_RCVD|DIR_RCVD|INFO_RCVD)
@@ -28,7 +29,7 @@
 // May also contain PKp2
 #define TYPE_EIGHT_PARAMS       (PEERID_RCVD|NONCE_RCVD)
 #define TYPE_NINE_PARAMS        (PEERID_RCVD|MAC_RCVD)
-#define CONF_PARAMS             (DIR_RCVD|CRYPTOSUITE_RCVD|VERSION_RCVD|SERVER_NAME_RCVD|SERVER_URL_RCVD|WE_COUNT_RCVD|REALM_RCVD|ENCODE_RCVD|MAX_OOB_RETRIES_RCVD)
+#define CONF_PARAMS             (DIR_RCVD|CRYPTOSUITE_RCVD|VERSION_RCVD|SERVER_NAME_RCVD|SERVER_URL_RCVD|WE_COUNT_RCVD|REALM_RCVD|ENCODE_RCVD|MAX_OOB_RETRIES_RCVD|FORWARD_SECRECY_RCVD)
 
 /* Statements to create server database tables */
 #define CREATE_TABLES_EPHEMERALSTATE                \
@@ -99,6 +100,7 @@ struct eap_noob_global_conf {
     char * realm;
     int len_realm;
     int oob_encode;
+    int forward_secrecy;
 };
 
 struct eap_noob_server_config_params {

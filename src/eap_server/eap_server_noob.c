@@ -450,6 +450,11 @@ static void eap_noob_assign_config(char * conf_name, char * conf_value, struct e
         data->config_params |= ENCODE_RCVD;
         wpa_printf(MSG_DEBUG, "EAP-NOOB: FILE  READ= %d", server_conf.oob_encode);
     }
+    else if (0 == strcmp("ForwardSecrecy", conf_name)) {
+        server_conf.forward_secrecy = (int) strtol(conf_value, NULL, 10);
+        data->config_params |= FORWARD_SECRECY_RCVD;
+        wpa_printf(MSG_DEBUG, "EAP-NOOB:: FILE READ = %d", server_conf.forward_secrecy);
+    }
 }
 
 /**
@@ -529,6 +534,10 @@ static int eap_noob_handle_incomplete_conf(struct eap_noob_data * data)
 
     if (0 == (data->config_params & REALM_RCVD))
         server_conf.realm = os_strdup(DEFAULT_REALM);
+
+    if (0 == (data->config_params & FORWARD_SECRECY_RCVD)) {
+        server_conf.forward_secrecy = DEFAULT_FORWARD_SECRECY;
+    }
 
     return SUCCESS;
 }
@@ -1072,8 +1081,7 @@ static struct wpabuf * eap_noob_build_type_eight(struct eap_noob_data * data, u8
     if (data->cryptosuitep != data->cryptosuitep_prev) {
         data->keying_mode = KEYING_RECONNECT_EXCHANGE_NEW_CRYPTOSUITE;
     }
-    // TODO: How to determine when forward secrecy is required?
-    else if (false) {
+    else if (server_conf.forward_secrecy) {
         data->keying_mode = KEYING_RECONNECT_EXCHANGE_ECDHE;
     } else {
         data->keying_mode = KEYING_RECONNECT_EXCHANGE_NO_ECDHE;

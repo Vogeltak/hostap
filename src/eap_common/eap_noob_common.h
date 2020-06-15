@@ -16,6 +16,7 @@
 #define MACS_TYPE               2
 #define MACP_TYPE               1
 #define FORMAT_BASE64URL        1
+#define DEFAULT_FORWARD_SECRECY 1
 
 /* Maximum values for fields */
 #define MAX_SUP_VER             3
