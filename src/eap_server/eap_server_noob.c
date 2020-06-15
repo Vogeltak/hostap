@@ -1860,6 +1860,8 @@ EXIT:
  **/
 static void eap_noob_process_type_eight(struct eap_noob_data * data)
 {
+    size_t secret_len = ECDH_SHARED_SECRET_LEN;
+
     if (!data) {
         wpa_printf(MSG_DEBUG, "EAP-NOOB: Input arguments NULL for function %s",__func__);
         return ;
@@ -1872,7 +1874,16 @@ static void eap_noob_process_type_eight(struct eap_noob_data * data)
     if ((data->err_code != NO_ERROR)) {
         eap_noob_set_done(data, NOT_DONE); return;
     }
+    if (eap_noob_derive_session_secret(data,&secret_len) != SUCCESS) {
+        wpa_printf(MSG_DEBUG, "EAP-NOOB: Error in deriving shared key"); return;
+    }
+    eap_noob_Base64Encode(data->ecdh_exchange_data->shared_key,
+        ECDH_SHARED_SECRET_LEN, &data->ecdh_exchange_data->shared_key_b64);
+
+    wpa_printf(MSG_DEBUG, "EAP-NOOB: Shared secret %s", data->ecdh_exchange_data->shared_key_b64);
+
     wpa_hexdump_ascii(MSG_DEBUG, "EAP-NOOB: Nonce Peer", data->kdf_nonce_data->Np, NONCE_LEN);
+
     if (eap_noob_verify_peerId(data) == SUCCESS) {
         data->next_req = EAP_NOOB_TYPE_9;
         eap_noob_set_done(data, NOT_DONE); data->rcvd_params = 0;

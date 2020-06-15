@@ -688,8 +688,7 @@ int eap_noob_gen_KDF(struct eap_noob_data * data, int state)
                 data->kdf_nonce_data->Np, NONCE_LEN,
                 data->kdf_nonce_data->Ns, NONCE_LEN,
                 Noob, NOOB_LEN, md);
-    } else {
-
+    } else if (data->keying_mode == KEYING_RECONNECT_EXCHANGE_NO_ECDHE) {
         wpa_hexdump_ascii(MSG_DEBUG,"EAP-NOOB: kz", data->Kz,KZ_LEN);
         eap_noob_ECDH_KDF_X9_63(out, KDF_LEN,
                 data->Kz, KZ_LEN,
@@ -697,6 +696,14 @@ int eap_noob_gen_KDF(struct eap_noob_data * data, int state)
                 data->kdf_nonce_data->Np, NONCE_LEN,
                 data->kdf_nonce_data->Ns, NONCE_LEN,
                 NULL, 0, md);
+    } else {
+        // Keying mode is 2 or 3; reconnecting with new ECDH key pair
+        eap_noob_ECDH_KDF_X9_63(out, KDF_LEN,
+                data->ecdh_exchange_data->shared_key, ECDH_SHARED_SECRET_LEN,
+                (unsigned char *)ALGORITHM_ID, ALGORITHM_ID_LEN,
+                data->kdf_nonce_data->Np, NONCE_LEN,
+                data->kdf_nonce_data->Ns, NONCE_LEN,
+                data->Kz, KZ_LEN, md);
     }
     wpa_hexdump_ascii(MSG_DEBUG,"EAP-NOOB: KDF",out,KDF_LEN);
 
@@ -724,7 +731,8 @@ int eap_noob_gen_KDF(struct eap_noob_data * data, int state)
         memcpy(data->kdf_out->Kz, out + counter, KZ_LEN);
 
         // Save for later use in the reconnect exchange.
-        if(state == COMPLETION_EXCHANGE) {
+        if (state == COMPLETION_EXCHANGE
+            || data->keying_mode == KEYING_RECONNECT_EXCHANGE_NEW_CRYPTOSUITE) {
             data->Kz = os_zalloc(KZ_LEN);
             memcpy(data->Kz, out + counter, KZ_LEN);
         }
