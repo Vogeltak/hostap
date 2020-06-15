@@ -850,7 +850,7 @@ char * eap_noob_build_mac_input(const struct eap_noob_data * data,
     }
 
     // Public key server
-    if (state == RECONNECTING_STATE) {
+    if (!data->ecdh_exchange_data->jwk_serv) {
         wpabuf_printf(mac_json, ",\"\"");
     } else {
         wpabuf_printf(mac_json, ",%s", data->ecdh_exchange_data->jwk_serv);
@@ -861,7 +861,7 @@ char * eap_noob_build_mac_input(const struct eap_noob_data * data,
     wpabuf_printf(mac_json, ",\"%s\"", nonce);
 
     // Public key peer
-    if (state == RECONNECTING_STATE) {
+    if (!data->ecdh_exchange_data->jwk_peer) {
         wpabuf_printf(mac_json, ",\"\"");
     } else {
         wpabuf_printf(mac_json, ",%s", data->ecdh_exchange_data->jwk_peer);
