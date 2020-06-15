@@ -46,6 +46,7 @@
 #define METHOD_ID_LEN           32
 
 /* Common bitmasks to validate message structure */
+// TODO: Update these to be in a logical order (i.e. first common, then unique)
 #define PEERID_RCVD                 0x0001
 #define DIR_RCVD                    0x0002
 #define CRYPTOSUITE_RCVD            0x0004
@@ -56,8 +57,24 @@
 #define INFO_RCVD                   0x0080
 #define STATE_RCVD                  0x0100
 #define MINSLP_RCVD                 0x0200
+#define SERVER_NAME_RCVD            0x0400
+#define PEER_MAKE_RCVD              0x0400
+#define SERVER_URL_RCVD             0x0800
+#define PEER_ID_NUM_RCVD            0x0800
 #define NOOBID_RCVD                 0x1000
+#define WE_COUNT_RCVD               0x2000
+#define DEF_MIN_SLEEP_RCVD          0x2000
+#define REALM_RCVD                  0x4000
+#define MSG_ENC_FMT_RCVD            0x4000
+#define ENCODE_RCVD                 0x8000
+#define PEER_TYPE_RCVD              0x8000
 #define MAX_OOB_RETRIES_RCVD       0x10000
+#define FORWARD_SECRECY_RCVD       0x10001
+#define KEYING_MODE_RCVD           0x10002
+
+
+/* Unique peer bitmasks to validate message structure.
+ * Others are in the common header file */
 
 /* Valid or invalid states */
 #define INVALID                 0

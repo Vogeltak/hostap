@@ -9,15 +9,6 @@
 #define DB_NAME                 "/tmp/noob_server.db"
 #define DEVICE_TABLE            "devices"
 
-/* Unique server bitmasks to validate message structure.
- * Others are in the common header file */
-#define SERVER_NAME_RCVD        0x0400
-#define SERVER_URL_RCVD         0x0800
-#define WE_COUNT_RCVD           0x2000
-#define REALM_RCVD              0x4000
-#define ENCODE_RCVD             0x8000
-#define FORWARD_SECRECY_RCVD    0x10001
-
 /* Bitmasks specifying expected parameters for each message */
 #define TYPE_TWO_PARAMS         (PEERID_RCVD|VERSION_RCVD|CRYPTOSUITE_RCVD|DIR_RCVD|INFO_RCVD)
 #define TYPE_THREE_PARAMS       (PEERID_RCVD|NONCE_RCVD|PKEY_RCVD)

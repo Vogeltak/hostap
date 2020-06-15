@@ -542,6 +542,7 @@ void eap_noob_decode_obj(struct eap_noob_data * data, struct json_token * root)
                 // KeyingMode
                 else if (!os_strcmp(key, KEYINGMODE)) {
                     data->keying_mode = val_int;
+                    data->rcvd_params |= KEYING_MODE_RCVD;
                 }
                 // ErrorCode
                 else if (!os_strcmp(key, ERRORCODE)) {
