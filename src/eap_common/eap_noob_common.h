@@ -304,7 +304,7 @@ int eap_noob_ECDH_KDF_X9_63(unsigned char *out, size_t outlen,
         const unsigned char * partyVinfo, size_t partyVinfo_len,
         const unsigned char * suppPrivinfo, size_t suppPrivinfo_len,
         const EVP_MD * md);
-int eap_noob_gen_KDF(struct eap_noob_data * data, int state);
+int eap_noob_gen_KDF(struct eap_noob_data * data, int state, bool use_prev_Kz);
 char * eap_noob_build_mac_input(const struct eap_noob_data * data,
                                        int first_param, int state);
 u8 * eap_noob_gen_MAC(const struct eap_noob_data * data, int type, u8 * key, int keylen, int state);

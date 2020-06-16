@@ -657,17 +657,25 @@ err:
 }
 
 /**
- * eap_noob_gen_KDF : generates and updates the KDF inside the peer data.
- * @data  : peer data.
+ * eap_noob_gen_KDF : generates and updates the KDF inside the data object.
+ * @data  : eap noob data.
  * @state : EAP_NOOB state
  * Returns:
 **/
-int eap_noob_gen_KDF(struct eap_noob_data * data, int state)
+int eap_noob_gen_KDF(struct eap_noob_data * data, int state, bool use_prev_Kz)
 {
     const EVP_MD * md = EVP_sha256();
     unsigned char * out = os_zalloc(KDF_LEN);
     int counter = 0, len = 0;
     u8 * Noob;
+
+    u8 *Kz;
+
+    if (use_prev_Kz) {
+        Kz = data->KzPrev;
+    } else {
+        Kz = data->Kz;
+    }
 
     wpa_hexdump_ascii(MSG_DEBUG, "EAP-NOOB: Algorith ID:", ALGORITHM_ID,ALGORITHM_ID_LEN);
     wpa_hexdump_ascii(MSG_DEBUG, "EAP-NOOB: Nonce_Peer", data->kdf_nonce_data->Np,
@@ -690,9 +698,9 @@ int eap_noob_gen_KDF(struct eap_noob_data * data, int state)
                 data->kdf_nonce_data->Ns, NONCE_LEN,
                 Noob, NOOB_LEN, md);
     } else if (data->keying_mode == KEYING_RECONNECT_EXCHANGE_NO_ECDHE) {
-        wpa_hexdump_ascii(MSG_DEBUG,"EAP-NOOB: kz", data->Kz,KZ_LEN);
+        wpa_hexdump_ascii(MSG_DEBUG,"EAP-NOOB: kz", Kz, KZ_LEN);
         eap_noob_ECDH_KDF_X9_63(out, KDF_LEN,
-                data->Kz, KZ_LEN,
+                Kz, KZ_LEN,
                 (unsigned char *)ALGORITHM_ID, ALGORITHM_ID_LEN,
                 data->kdf_nonce_data->Np, NONCE_LEN,
                 data->kdf_nonce_data->Ns, NONCE_LEN,
@@ -704,7 +712,7 @@ int eap_noob_gen_KDF(struct eap_noob_data * data, int state)
                 (unsigned char *)ALGORITHM_ID, ALGORITHM_ID_LEN,
                 data->kdf_nonce_data->Np, NONCE_LEN,
                 data->kdf_nonce_data->Ns, NONCE_LEN,
-                data->Kz, KZ_LEN, md);
+                Kz, KZ_LEN, md);
     }
     wpa_hexdump_ascii(MSG_DEBUG,"EAP-NOOB: KDF",out,KDF_LEN);
 
@@ -734,6 +742,10 @@ int eap_noob_gen_KDF(struct eap_noob_data * data, int state)
         // Save for later use in the reconnect exchange.
         if (state == COMPLETION_EXCHANGE
             || data->keying_mode == KEYING_RECONNECT_EXCHANGE_NEW_CRYPTOSUITE) {
+            if (data->Kz && data->keying_mode == KEYING_RECONNECT_EXCHANGE_NEW_CRYPTOSUITE) {
+                data->KzPrev = os_zalloc(KZ_LEN);
+                memcpy(data->KzPrev, data->Kz, KZ_LEN);
+            }
             data->Kz = os_zalloc(KZ_LEN);
             memcpy(data->Kz, out + counter, KZ_LEN);
         }

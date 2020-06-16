@@ -1014,7 +1014,7 @@ static struct wpabuf * eap_noob_build_type_nine(struct eap_noob_data * data, u8 
         goto EXIT;
     }
 
-    if (SUCCESS != eap_noob_gen_KDF(data, RECONNECT_EXCHANGE)) {
+    if (SUCCESS != eap_noob_gen_KDF(data, RECONNECT_EXCHANGE, false)) {
         wpa_printf(MSG_ERROR, "EAP-NOOB: Error in KDF during Request/NOOB-FR");
         goto EXIT;
     }
@@ -1265,7 +1265,7 @@ static struct wpabuf * eap_noob_build_type_six(struct eap_noob_data * data, u8 i
 
     wpa_printf(MSG_DEBUG, "EAP-NOOB: Entering %s", __func__);
 
-    if (SUCCESS != eap_noob_gen_KDF(data, COMPLETION_EXCHANGE)) {
+    if (SUCCESS != eap_noob_gen_KDF(data, COMPLETION_EXCHANGE, false)) {
         wpa_printf(MSG_ERROR, "EAP-NOOB: Error in KDF during Request/NOOB-CE");
         goto EXIT;
     }

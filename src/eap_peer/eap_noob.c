@@ -565,16 +565,16 @@ static int eap_noob_update_persistentstate(struct eap_noob_data * data)
     snprintf(query, MAX_QUERY_LEN, "INSERT INTO PersistentState (Ssid, PeerId, Verp, Cryptosuitep, CryptosuitepPrev, Realm, Kz, KzPrev, PeerState) "
             "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)");
 
-    if(data->kdf_out->Kz){
+    if(data->Kz){
     	 wpa_printf(MSG_DEBUG, "NOT NULL and state %d",data->peer_state);
-    	 wpa_hexdump_ascii(MSG_DEBUG, "EAP-NOOB: KZ is", data->kdf_out->Kz, KZ_LEN);}
+    	 wpa_hexdump_ascii(MSG_DEBUG, "EAP-NOOB: KZ is", data->Kz, KZ_LEN);}
     else
     	 wpa_printf(MSG_DEBUG, "Kz is somehow null and state %d", data->peer_state);
 
 
 
     err -= (FAILURE == eap_noob_exec_query(data, query, NULL, 20, TEXT, data->ssid, TEXT, data->peerid,
-            INT, data->version, INT, data->cryptosuitep, INT, data->cryptosuitep, TEXT, data->realm, BLOB, KZ_LEN, data->kdf_out->Kz, BLOB, KZ_LEN, data->kdf_out->Kz,
+            INT, data->version, INT, data->cryptosuitep, INT, data->cryptosuitep_prev, TEXT, data->realm, BLOB, KZ_LEN, data->Kz, BLOB, KZ_LEN, data->KzPrev,
             INT, data->peer_state));
     if (err < 0) { ret = FAILURE; goto EXIT; }
 EXIT:
@@ -1323,15 +1323,54 @@ static struct wpabuf * eap_noob_process_type_9(struct eap_sm * sm, struct eap_no
     if (NULL != (resp = eap_noob_verify_PeerId(data,id))) return resp;
 
     /* Generate KDF and MAC */
-    if (SUCCESS != eap_noob_gen_KDF(data,RECONNECT_EXCHANGE)) {
-    	wpa_printf(MSG_ERROR, "EAP-NOOB: Error in KDF during Request/NOOB-FR"); return NULL;
+    if (SUCCESS != eap_noob_gen_KDF(data, RECONNECT_EXCHANGE, false)) {
+        wpa_printf(MSG_ERROR, "EAP-NOOB: Error in KDF during Request/NOOB-FR"); return NULL;
     }
     mac = eap_noob_gen_MAC(data, MACS_TYPE, data->kdf_out->Kms, KMS_LEN, RECONNECTING_STATE);
     if (NULL == mac) return NULL;
 
+    /*
+     * Rules for verifying MACs2
+     * As specified in the current draft
+     * https://tools.ietf.org/html/draft-ietf-emu-eap-noob-01#section-3.4.2
+     */
+
+    // 1. Compare received MACs2 against locally computed one using Kz from
+    // the persistent EAP-NOOB association
     if (0 != strcmp((char *)mac,data->mac)) {
-        data->err_code = E4001;
-        resp = eap_noob_err_msg(data, id); return resp;
+        // 2. Check if MAC computed with KzPrev is equal to MACs2
+        if (data->KzPrev) {
+            // Run KDF but tell it to use KzPrev instead of Kz
+            if (SUCCESS != eap_noob_gen_KDF(data, RECONNECT_EXCHANGE, true)) {
+                wpa_printf(MSG_ERROR, "EAP-NOOB: Error in KDF during Request/NOOB-FR"); return NULL;
+            }
+            mac = eap_noob_gen_MAC(data, MACS_TYPE, data->kdf_out->Kms, KMS_LEN, RECONNECTING_STATE);
+            if (NULL == mac) return NULL;
+        }
+
+        // Check if the MAC values are the same when using KzPrev
+        // Note: If there is no KzPrev value, this will do the same check as
+        // before and thus it will still fail, as is expected.
+        if (strcmp((char *) mac, data->mac)) {
+            // 4. Both do not match the received MAC, return error message
+            data->err_code = E4001;
+            resp = eap_noob_err_msg(data, id); return resp;
+        }
+
+        // If the second MAC matched the received value, rollback the upgrade
+        memcpy(data->Kz, data->KzPrev, KZ_LEN);
+        data->cryptosuitep = data->cryptosuitep_prev;
+    }
+
+    // 3. One of two matched, proceed to send final response
+
+    // Prepare for possible synchronization failure caused by the loss of
+    // the final response (Type=9) during cryptosuite upgrade
+    if (data->keying_mode == KEYING_RECONNECT_EXCHANGE_NEW_CRYPTOSUITE) {
+        data->KzPrev = os_zalloc(KZ_LEN);
+        memcpy(data->KzPrev, data->Kz, KZ_LEN);
+        data->Kz = os_zalloc(KZ_LEN);
+        memcpy(data->Kz, data->kdf_out->Kz, KZ_LEN);
     }
 
     resp = eap_noob_build_type_9(data, id);
@@ -1451,7 +1490,7 @@ static struct wpabuf * eap_noob_process_type_6(struct eap_sm * sm, struct eap_no
        }
     }
     /* generate Keys */
-    if (SUCCESS != eap_noob_gen_KDF(data, COMPLETION_EXCHANGE)) {
+    if (SUCCESS != eap_noob_gen_KDF(data, COMPLETION_EXCHANGE, false)) {
     	wpa_printf(MSG_ERROR, "EAP-NOOB: Error in KDF during Request/NOOB-CE"); return NULL;
     }
     if (NULL != (resp = eap_noob_verify_PeerId(data, id))) return resp;
