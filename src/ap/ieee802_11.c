@@ -594,10 +594,6 @@ static int auth_sae_send_commit(struct hostapd_data *hapd,
 	data = auth_build_sae_commit(hapd, sta, update, status_code);
 	if (!data && sta->sae->tmp && sta->sae->tmp->pw_id)
 		return WLAN_STATUS_UNKNOWN_PASSWORD_IDENTIFIER;
-#ifdef CONFIG_SAE_PK
-	if (!data && sta->sae->tmp && sta->sae->tmp->reject_group)
-		return WLAN_STATUS_FINITE_CYCLIC_GROUP_NOT_SUPPORTED;
-#endif /* CONFIG_SAE_PK */
 	if (data == NULL)
 		return WLAN_STATUS_UNSPECIFIED_FAILURE;
 
@@ -1195,7 +1191,7 @@ static int sae_is_group_enabled(struct hostapd_data *hapd, int group)
 
 
 static int check_sae_rejected_groups(struct hostapd_data *hapd,
-				     struct sae_data *sae, bool pk)
+				     struct sae_data *sae)
 {
 	const struct wpabuf *groups;
 	size_t i, count;
@@ -1216,29 +1212,8 @@ static int check_sae_rejected_groups(struct hostapd_data *hapd,
 		group = WPA_GET_LE16(pos);
 		pos += 2;
 		enabled = sae_is_group_enabled(hapd, group);
-
-#ifdef CONFIG_SAE_PK
-		/* TODO: Could check more explicitly against the matching
-		 * sae_password entry only for the somewhat theoretical case of
-		 * different passwords using different groups for SAE-PK K_AP
-		 * values. */
-		if (pk) {
-			struct sae_password_entry *pw;
-
-			enabled = false;
-			for (pw = hapd->conf->sae_passwords; pw;
-			     pw = pw->next) {
-				if (pw->pk && pw->pk->group == group) {
-					enabled = true;
-					break;
-				}
-			}
-		}
-#endif /* CONFIG_SAE_PK */
-
-		wpa_printf(MSG_DEBUG, "SAE: Rejected group %u is %s%s",
-			   group, enabled ? "enabled" : "disabled",
-			   pk ? " (PK)" : "");
+		wpa_printf(MSG_DEBUG, "SAE: Rejected group %u is %s",
+			   group, enabled ? "enabled" : "disabled");
 		if (enabled)
 			return 1;
 	}
@@ -1442,9 +1417,7 @@ static void handle_auth_sae(struct hostapd_data *hapd, struct sta_info *sta,
 		if (resp != WLAN_STATUS_SUCCESS)
 			goto reply;
 
-		if (check_sae_rejected_groups(hapd, sta->sae,
-					      status_code ==
-					      WLAN_STATUS_SAE_PK)) {
+		if (check_sae_rejected_groups(hapd, sta->sae)) {
 			resp = WLAN_STATUS_UNSPECIFIED_FAILURE;
 			goto reply;
 		}
@@ -3257,6 +3230,13 @@ static int check_assoc_ies(struct hostapd_data *hapd, struct sta_info *sta,
 		if (resp != WLAN_STATUS_SUCCESS)
 			return resp;
 		if (is_6ghz_op_class(hapd->iconf->op_class)) {
+			if (!(sta->flags & WLAN_STA_HE)) {
+				hostapd_logger(hapd, sta->addr,
+					       HOSTAPD_MODULE_IEEE80211,
+					       HOSTAPD_LEVEL_INFO,
+					       "Station does not support mandatory HE PHY - reject association");
+				return WLAN_STATUS_DENIED_HE_NOT_SUPPORTED;
+			}
 			resp = copy_sta_he_6ghz_capab(hapd, sta,
 						      elems.he_6ghz_band_cap);
 			if (resp != WLAN_STATUS_SUCCESS)
@@ -5583,5 +5563,58 @@ void ieee802_11_rx_from_unknown(struct hostapd_data *hapd, const u8 *src,
 			WLAN_REASON_CLASS3_FRAME_FROM_NONASSOC_STA);
 }
 
+
+u8 * hostapd_eid_wb_chsw_wrapper(struct hostapd_data *hapd, u8 *eid)
+{
+	u8 bw, chan1, chan2 = 0;
+	int freq1;
+
+	if (!hapd->cs_freq_params.channel ||
+	    (!hapd->cs_freq_params.vht_enabled &&
+	     !hapd->cs_freq_params.he_enabled))
+		return eid;
+
+	/* bandwidth: 0: 40, 1: 80, 2: 160, 3: 80+80 */
+	switch (hapd->cs_freq_params.bandwidth) {
+	case 40:
+		bw = 0;
+		break;
+	case 80:
+		/* check if it's 80+80 */
+		if (!hapd->cs_freq_params.center_freq2)
+			bw = 1;
+		else
+			bw = 3;
+		break;
+	case 160:
+		bw = 2;
+		break;
+	default:
+		/* not valid VHT bandwidth or not in CSA */
+		return eid;
+	}
+
+	freq1 = hapd->cs_freq_params.center_freq1 ?
+		hapd->cs_freq_params.center_freq1 :
+		hapd->cs_freq_params.freq;
+	if (ieee80211_freq_to_chan(freq1, &chan1) !=
+	    HOSTAPD_MODE_IEEE80211A)
+		return eid;
+
+	if (hapd->cs_freq_params.center_freq2 &&
+	    ieee80211_freq_to_chan(hapd->cs_freq_params.center_freq2,
+				   &chan2) != HOSTAPD_MODE_IEEE80211A)
+		return eid;
+
+	*eid++ = WLAN_EID_VHT_CHANNEL_SWITCH_WRAPPER;
+	*eid++ = 5; /* Length of Channel Switch Wrapper */
+	*eid++ = WLAN_EID_VHT_WIDE_BW_CHSWITCH;
+	*eid++ = 3; /* Length of Wide Bandwidth Channel Switch element */
+	*eid++ = bw; /* New Channel Width */
+	*eid++ = chan1; /* New Channel Center Frequency Segment 0 */
+	*eid++ = chan2; /* New Channel Center Frequency Segment 1 */
+
+	return eid;
+}
 
 #endif /* CONFIG_NATIVE_WINDOWS */

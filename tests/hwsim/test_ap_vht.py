@@ -361,6 +361,7 @@ def test_ap_vht160(dev, apdev):
                   "hw_mode": "a",
                   "channel": "36",
                   "ht_capab": "[HT40+]",
+                  "vht_capab": "[VHT160]",
                   "ieee80211n": "1",
                   "ieee80211ac": "1",
                   "vht_oper_chwidth": "2",
@@ -436,6 +437,7 @@ def test_ap_vht160b(dev, apdev):
                   "hw_mode": "a",
                   "channel": "104",
                   "ht_capab": "[HT40-]",
+                  "vht_capab": "[VHT160]",
                   "ieee80211n": "1",
                   "ieee80211ac": "1",
                   "vht_oper_chwidth": "2",
@@ -538,6 +540,7 @@ def run_ap_vht160_no_dfs(dev, apdev, channel, ht_capab):
                   "hw_mode": "a",
                   "channel": channel,
                   "ht_capab": ht_capab,
+                  "vht_capab": "[VHT160]",
                   "ieee80211n": "1",
                   "ieee80211ac": "1",
                   "vht_oper_chwidth": "2",
@@ -550,7 +553,7 @@ def run_ap_vht160_no_dfs(dev, apdev, channel, ht_capab):
             cmd = subprocess.Popen(["iw", "reg", "get"], stdout=subprocess.PIPE)
             reg = cmd.stdout.readlines()
             for r in reg:
-                if "5490" in r and "DFS" in r:
+                if b"5490" in r and b"DFS" in r:
                     raise HwsimSkip("ZA regulatory rule did not have DFS requirement removed")
             raise Exception("AP setup timed out")
 
@@ -616,6 +619,7 @@ def test_ap_vht80plus80(dev, apdev):
                   "hw_mode": "a",
                   "channel": "52",
                   "ht_capab": "[HT40+]",
+                  "vht_capab": "[VHT160-80PLUS80]",
                   "ieee80211n": "1",
                   "ieee80211ac": "1",
                   "vht_oper_chwidth": "3",
@@ -633,6 +637,7 @@ def test_ap_vht80plus80(dev, apdev):
                   "hw_mode": "a",
                   "channel": "36",
                   "ht_capab": "[HT40+]",
+                  "vht_capab": "[VHT160-80PLUS80]",
                   "ieee80211n": "1",
                   "ieee80211ac": "1",
                   "vht_oper_chwidth": "3",

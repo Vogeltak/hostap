@@ -12,6 +12,7 @@
 #include "utils/common.h"
 #include "utils/eloop.h"
 #include "utils/ip_addr.h"
+#include "utils/base64.h"
 #include "common/dpp.h"
 #include "common/gas.h"
 #include "common/gas_server.h"
@@ -48,6 +49,7 @@ wpas_dpp_tx_pkex_status(struct wpa_supplicant *wpa_s,
 #ifdef CONFIG_DPP2
 static void wpas_dpp_reconfig_reply_wait_timeout(void *eloop_ctx,
 						 void *timeout_ctx);
+static void wpas_dpp_start_gas_client(struct wpa_supplicant *wpa_s);
 #endif /* CONFIG_DPP2 */
 
 static const u8 broadcast[ETH_ALEN] = { 0xff, 0xff, 0xff, 0xff, 0xff, 0xff };
@@ -1217,6 +1219,106 @@ static struct wpa_ssid * wpas_dpp_add_network(struct wpa_supplicant *wpa_s,
 		}
 	}
 
+#ifdef CONFIG_DPP2
+	if (conf->akm == DPP_AKM_DOT1X) {
+		int i;
+		char name[100], blobname[128];
+		struct wpa_config_blob *blob;
+
+		ssid->key_mgmt = WPA_KEY_MGMT_IEEE8021X |
+			WPA_KEY_MGMT_IEEE8021X_SHA256 |
+			WPA_KEY_MGMT_IEEE8021X_SHA256;
+		ssid->ieee80211w = MGMT_FRAME_PROTECTION_OPTIONAL;
+
+		if (conf->cacert) {
+			/* caCert is DER-encoded X.509v3 certificate for the
+			 * server certificate if that is different from the
+			 * trust root included in certBag. */
+			/* TODO: ssid->eap.cert.ca_cert */
+		}
+
+		if (conf->certs) {
+			wpa_hexdump_buf(MSG_INFO, "JKM:certs",
+					conf->certs);
+			for (i = 0; ; i++) {
+				os_snprintf(name, sizeof(name), "dpp-certs-%d",
+					    i);
+				if (!wpa_config_get_blob(wpa_s->conf, name))
+					break;
+			}
+
+			blob = os_zalloc(sizeof(*blob));
+			if (!blob)
+				goto fail;
+			blob->len = wpabuf_len(conf->certs);
+			blob->name = os_strdup(name);
+			blob->data = os_malloc(blob->len);
+			if (!blob->name || !blob->data) {
+				wpa_config_free_blob(blob);
+				goto fail;
+			}
+			os_memcpy(blob->data, wpabuf_head(conf->certs),
+				  blob->len);
+			os_snprintf(blobname, sizeof(blobname), "blob://%s",
+				    name);
+			wpa_config_set_blob(wpa_s->conf, blob);
+			wpa_printf(MSG_DEBUG, "DPP: Added certificate blob %s",
+				   name);
+			ssid->eap.cert.client_cert = os_strdup(blobname);
+			if (!ssid->eap.cert.client_cert)
+				goto fail;
+
+			/* TODO: ssid->eap.identity from own certificate */
+			if (wpa_config_set(ssid, "identity", "\"dpp-ent\"",
+					   0) < 0)
+				goto fail;
+		}
+
+		if (auth->priv_key) {
+			for (i = 0; ; i++) {
+				os_snprintf(name, sizeof(name), "dpp-key-%d",
+					    i);
+				if (!wpa_config_get_blob(wpa_s->conf, name))
+					break;
+			}
+
+			wpa_hexdump_buf(MSG_INFO, "JKM:privkey",
+					auth->priv_key);
+			blob = os_zalloc(sizeof(*blob));
+			if (!blob)
+				goto fail;
+			blob->len = wpabuf_len(auth->priv_key);
+			blob->name = os_strdup(name);
+			blob->data = os_malloc(blob->len);
+			if (!blob->name || !blob->data) {
+				wpa_config_free_blob(blob);
+				goto fail;
+			}
+			os_memcpy(blob->data, wpabuf_head(auth->priv_key),
+				  blob->len);
+			os_snprintf(blobname, sizeof(blobname), "blob://%s",
+				    name);
+			wpa_config_set_blob(wpa_s->conf, blob);
+			wpa_printf(MSG_DEBUG, "DPP: Added private key blob %s",
+				   name);
+			ssid->eap.cert.private_key = os_strdup(blobname);
+			if (!ssid->eap.cert.private_key)
+				goto fail;
+		}
+
+		if (conf->server_name) {
+			ssid->eap.cert.domain_suffix_match =
+				os_strdup(conf->server_name);
+			if (!ssid->eap.cert.domain_suffix_match)
+				goto fail;
+		}
+
+		/* TODO: Use entCreds::eapMethods */
+		if (wpa_config_set(ssid, "eap", "TLS", 0) < 0)
+			goto fail;
+	}
+#endif /* CONFIG_DPP2 */
+
 	os_memcpy(wpa_s->dpp_last_ssid, conf->ssid, conf->ssid_len);
 	wpa_s->dpp_last_ssid_len = conf->ssid_len;
 
@@ -1345,6 +1447,32 @@ static int wpas_dpp_handle_config_obj(struct wpa_supplicant *wpa_s,
 		}
 	}
 
+#ifdef CONFIG_DPP2
+	if (conf->certbag) {
+		char *b64;
+
+		b64 = base64_encode_no_lf(wpabuf_head(conf->certbag),
+					  wpabuf_len(conf->certbag), NULL);
+		if (b64)
+			wpa_msg(wpa_s, MSG_INFO, DPP_EVENT_CERTBAG "%s", b64);
+		os_free(b64);
+	}
+
+	if (conf->cacert) {
+		char *b64;
+
+		b64 = base64_encode_no_lf(wpabuf_head(conf->cacert),
+					  wpabuf_len(conf->cacert), NULL);
+		if (b64)
+			wpa_msg(wpa_s, MSG_INFO, DPP_EVENT_CACERT "%s", b64);
+		os_free(b64);
+	}
+
+	if (conf->server_name)
+		wpa_msg(wpa_s, MSG_INFO, DPP_EVENT_SERVER_NAME "%s",
+			conf->server_name);
+#endif /* CONFIG_DPP2 */
+
 	return wpas_dpp_process_config(wpa_s, auth, conf);
 }
 
@@ -1373,6 +1501,29 @@ static int wpas_dpp_handle_key_pkg(struct wpa_supplicant *wpa_s,
 
 	return 0;
 }
+
+
+#ifdef CONFIG_DPP2
+static void wpas_dpp_build_csr(void *eloop_ctx, void *timeout_ctx)
+{
+	struct wpa_supplicant *wpa_s = eloop_ctx;
+	struct dpp_authentication *auth = wpa_s->dpp_auth;
+
+	if (!auth || !auth->csrattrs)
+		return;
+
+	wpa_printf(MSG_DEBUG, "DPP: Build CSR");
+	wpabuf_free(auth->csr);
+	/* TODO: Additional information needed for CSR based on csrAttrs */
+	auth->csr = dpp_build_csr(auth);
+	if (!auth->csr) {
+		dpp_auth_deinit(wpa_s->dpp_auth);
+		wpa_s->dpp_auth = NULL;
+	}
+
+	wpas_dpp_start_gas_client(wpa_s);
+}
+#endif /* CONFIG_DPP2 */
 
 
 static void wpas_dpp_gas_resp_cb(void *ctx, const u8 *addr, u8 dialog_token,
@@ -1419,7 +1570,15 @@ static void wpas_dpp_gas_resp_cb(void *ctx, const u8 *addr, u8 dialog_token,
 		goto fail;
 	}
 
-	if (dpp_conf_resp_rx(auth, resp) < 0) {
+	res = dpp_conf_resp_rx(auth, resp);
+#ifdef CONFIG_DPP2
+	if (res == -2) {
+		wpa_printf(MSG_DEBUG, "DPP: CSR needed");
+		eloop_register_timeout(0, 0, wpas_dpp_build_csr, wpa_s, NULL);
+		return;
+	}
+#endif /* CONFIG_DPP2 */
+	if (res < 0) {
 		wpa_printf(MSG_DEBUG, "DPP: Configuration attempt failed");
 		goto fail;
 	}
@@ -2647,8 +2806,8 @@ void wpas_dpp_rx_action(struct wpa_supplicant *wpa_s, const u8 *src,
 
 
 static struct wpabuf *
-wpas_dpp_gas_req_handler(void *ctx, const u8 *sa, const u8 *query,
-			 size_t query_len)
+wpas_dpp_gas_req_handler(void *ctx, void *resp_ctx, const u8 *sa,
+			 const u8 *query, size_t query_len, u16 *comeback_delay)
 {
 	struct wpa_supplicant *wpa_s = ctx;
 	struct dpp_authentication *auth = wpa_s->dpp_auth;
@@ -2679,6 +2838,16 @@ wpas_dpp_gas_req_handler(void *ctx, const u8 *sa, const u8 *query,
 	wpa_msg(wpa_s, MSG_INFO, DPP_EVENT_CONF_REQ_RX "src=" MACSTR,
 		MAC2STR(sa));
 	resp = dpp_conf_req_rx(auth, query, query_len);
+
+#ifdef CONFIG_DPP2
+	if (!resp && auth->waiting_cert) {
+		wpa_printf(MSG_DEBUG, "DPP: Certificate not yet ready");
+		auth->cert_resp_ctx = resp_ctx;
+		*comeback_delay = 500;
+		return NULL;
+	}
+#endif /* CONFIG_DPP2 */
+
 	if (!resp)
 		wpa_msg(wpa_s, MSG_INFO, DPP_EVENT_CONF_FAILED);
 	auth->conf_resp = resp;
@@ -2703,6 +2872,14 @@ wpas_dpp_gas_status_handler(void *ctx, struct wpabuf *resp, int ok)
 		wpabuf_free(resp);
 		return;
 	}
+
+#ifdef CONFIG_DPP2
+	if (auth->waiting_csr && ok) {
+		wpa_printf(MSG_DEBUG, "DPP: Waiting for CSR");
+		wpabuf_free(resp);
+		return;
+	}
+#endif /* CONFIG_DPP2 */
 
 	wpa_printf(MSG_DEBUG, "DPP: Configuration exchange completed (ok=%d)",
 		   ok);
@@ -3096,6 +3273,7 @@ void wpas_dpp_deinit(struct wpa_supplicant *wpa_s)
 	eloop_cancel_timeout(wpas_dpp_conn_status_result_timeout, wpa_s, NULL);
 	eloop_cancel_timeout(wpas_dpp_reconfig_reply_wait_timeout,
 			     wpa_s, NULL);
+	eloop_cancel_timeout(wpas_dpp_build_csr, wpa_s, NULL);
 	dpp_pfs_free(wpa_s->dpp_pfs);
 	wpa_s->dpp_pfs = NULL;
 	wpas_dpp_chirp_stop(wpa_s);
@@ -3447,6 +3625,86 @@ int wpas_dpp_reconfig(struct wpa_supplicant *wpa_s, struct wpa_ssid *ssid)
 	wpa_s->dpp_chirp_listen = 0;
 
 	return eloop_register_timeout(0, 0, wpas_dpp_chirp_next, wpa_s, NULL);
+}
+
+
+int wpas_dpp_ca_set(struct wpa_supplicant *wpa_s, const char *cmd)
+{
+	int peer;
+	const char *pos, *value;
+	struct dpp_authentication *auth = wpa_s->dpp_auth;
+	u8 *bin;
+	size_t bin_len;
+	struct wpabuf *buf;
+
+	if (!auth || !auth->waiting_cert) {
+		wpa_printf(MSG_DEBUG,
+			   "DPP: No authentication exchange waiting for certificate information");
+		return -1;
+	}
+
+	pos = os_strstr(cmd, " peer=");
+	if (pos) {
+		peer = atoi(pos + 6);
+		if (!auth->peer_bi ||
+		    (unsigned int) peer != auth->peer_bi->id) {
+			wpa_printf(MSG_DEBUG, "DPP: Peer mismatch");
+			return -1;
+		}
+	}
+
+	pos = os_strstr(cmd, " value=");
+	if (!pos)
+		return -1;
+	value = pos + 7;
+
+	pos = os_strstr(cmd, " name=");
+	if (!pos)
+		return -1;
+	pos += 6;
+
+	if (os_strncmp(pos, "trustedEapServerName ", 21) == 0) {
+		os_free(auth->trusted_eap_server_name);
+		auth->trusted_eap_server_name = os_strdup(value);
+		return auth->trusted_eap_server_name ? 0 : -1;
+	}
+
+	bin = base64_decode(value, os_strlen(value), &bin_len);
+	if (!bin)
+		return -1;
+	buf = wpabuf_alloc_copy(bin, bin_len);
+	os_free(bin);
+
+	if (os_strncmp(pos, "caCert ", 7) == 0) {
+		wpabuf_free(auth->cacert);
+		auth->cacert = buf;
+		return 0;
+	}
+
+	if (os_strncmp(pos, "certBag ", 8) == 0) {
+		struct wpabuf *resp;
+
+		wpabuf_free(auth->certbag);
+		auth->certbag = buf;
+
+		resp = dpp_build_conf_resp(auth, auth->e_nonce,
+					   auth->curve->nonce_len,
+					   auth->e_netrole, true);
+		if (!resp)
+			return -1;
+		if (gas_server_set_resp(wpa_s->gas_server, auth->cert_resp_ctx,
+					resp) < 0) {
+			wpa_printf(MSG_DEBUG,
+				   "DPP: Could not find pending GAS response");
+			wpabuf_free(resp);
+			return -1;
+		}
+		auth->conf_resp = resp;
+		return 0;
+	}
+
+	wpabuf_free(buf);
+	return -1;
 }
 
 #endif /* CONFIG_DPP2 */

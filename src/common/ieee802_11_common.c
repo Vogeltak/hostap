@@ -136,6 +136,10 @@ static int ieee802_11_parse_vendor_specific(const u8 *pos, size_t elen,
 		case DPP_CC_OUI_TYPE:
 			/* DPP Configurator Connectivity element */
 			break;
+		case SAE_PK_OUI_TYPE:
+			elems->sae_pk = pos + 4;
+			elems->sae_pk_len = elen - 4;
+			break;
 		default:
 			wpa_printf(MSG_MSGDUMP, "Unknown WFA "
 				   "information element ignored "
@@ -1758,6 +1762,7 @@ const char * status2str(u16 status)
 	S2S(FILS_AUTHENTICATION_FAILURE)
 	S2S(UNKNOWN_AUTHENTICATION_SERVER)
 	S2S(UNKNOWN_PASSWORD_IDENTIFIER)
+	S2S(DENIED_HE_NOT_SUPPORTED)
 	S2S(SAE_HASH_TO_ELEMENT)
 	S2S(SAE_PK)
 	}
