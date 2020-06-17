@@ -62,11 +62,11 @@ const int state_machine[][5] = {
 };
 
 const int next_request_type[] = {
-    EAP_NOOB_TYPE_INITIAL_PARAMS, EAP_NOOB_TYPE_INITIAL_PARAMS,  EAP_NOOB_TYPE_INITIAL_PARAMS,  NONE,                           NONE,
-    EAP_NOOB_TYPE_INITIAL_PARAMS, EAP_NOOB_TYPE_WAITING,         EAP_NOOB_TYPE_COMPLETION_HMAC, NONE,                           NONE,
-    EAP_NOOB_TYPE_INITIAL_PARAMS, EAP_NOOB_TYPE_COMPLETION_HMAC, EAP_NOOB_TYPE_COMPLETION_HMAC, NONE,                           NONE,
-    EAP_NOOB_TYPE_INITIAL_PARAMS, NONE,                          NONE,                          EAP_NOOB_TYPE_RECONNECT_PARAMS, EAP_NOOB_TYPE_RECONNECT_PARAMS,
-    EAP_NOOB_TYPE_INITIAL_PARAMS, NONE,                          NONE,                          EAP_NOOB_TYPE_RECONNECT_PARAMS, NONE
+    EAP_NOOB_TYPE_2, EAP_NOOB_TYPE_2, EAP_NOOB_TYPE_2, NONE,            NONE,
+    EAP_NOOB_TYPE_2, EAP_NOOB_TYPE_4, EAP_NOOB_TYPE_6, NONE,            NONE,
+    EAP_NOOB_TYPE_2, EAP_NOOB_TYPE_6, EAP_NOOB_TYPE_6, NONE,            NONE,
+    EAP_NOOB_TYPE_2, NONE,            NONE,            EAP_NOOB_TYPE_7, EAP_NOOB_TYPE_7,
+    EAP_NOOB_TYPE_2, NONE,            NONE,            EAP_NOOB_TYPE_7, NONE
 };
 
 /* state vs message type matrix*/
@@ -328,7 +328,7 @@ void eap_noob_decode_obj(struct eap_noob_data * data, struct json_token * root)
 
         switch (child->type) {
             case JSON_OBJECT:
-                // PKp or PKp2
+                // PKp, PKp2, PKs or PKs2
                 if (!os_strcmp(key, PKP) || !os_strcmp(key, PKP2) ||
                     !os_strcmp(key, PKS) || !os_strcmp(key, PKS2)) {
                     struct json_token * child_copy;
@@ -522,7 +522,16 @@ void eap_noob_decode_obj(struct eap_noob_data * data, struct json_token * root)
                 }
                 // Cryptosuitep
                 else if (!os_strcmp(key, CRYPTOSUITEP)) {
-                    data->cryptosuite = val_int;
+                    // In case there already is a value for cryptosuitep, in
+                    // case of a reconnect exchange, store the old value such
+                    // that it can be used to determine whether a cryptosuite
+                    // update is happening.
+                    // This information is necessary to determine the KeyingMode
+                    // during the reconnect exchange.
+                    if (data->cryptosuitep) {
+                        data->cryptosuitep_prev = data->cryptosuitep;
+                    }
+                    data->cryptosuitep = val_int;
                     data->rcvd_params |= CRYPTOSUITE_RCVD;
                 }
                 // SleepTime
@@ -533,6 +542,7 @@ void eap_noob_decode_obj(struct eap_noob_data * data, struct json_token * root)
                 // KeyingMode
                 else if (!os_strcmp(key, KEYINGMODE)) {
                     data->keying_mode = val_int;
+                    data->rcvd_params |= KEYING_MODE_RCVD;
                 }
                 // ErrorCode
                 else if (!os_strcmp(key, ERRORCODE)) {
@@ -647,17 +657,25 @@ err:
 }
 
 /**
- * eap_noob_gen_KDF : generates and updates the KDF inside the peer data.
- * @data  : peer data.
+ * eap_noob_gen_KDF : generates and updates the KDF inside the data object.
+ * @data  : eap noob data.
  * @state : EAP_NOOB state
  * Returns:
 **/
-int eap_noob_gen_KDF(struct eap_noob_data * data, int state)
+int eap_noob_gen_KDF(struct eap_noob_data * data, int state, bool use_prev_Kz)
 {
     const EVP_MD * md = EVP_sha256();
     unsigned char * out = os_zalloc(KDF_LEN);
     int counter = 0, len = 0;
     u8 * Noob;
+
+    u8 *Kz;
+
+    if (use_prev_Kz) {
+        Kz = data->KzPrev;
+    } else {
+        Kz = data->Kz;
+    }
 
     wpa_hexdump_ascii(MSG_DEBUG, "EAP-NOOB: Algorith ID:", ALGORITHM_ID,ALGORITHM_ID_LEN);
     wpa_hexdump_ascii(MSG_DEBUG, "EAP-NOOB: Nonce_Peer", data->kdf_nonce_data->Np,
@@ -679,15 +697,22 @@ int eap_noob_gen_KDF(struct eap_noob_data * data, int state)
                 data->kdf_nonce_data->Np, NONCE_LEN,
                 data->kdf_nonce_data->Ns, NONCE_LEN,
                 Noob, NOOB_LEN, md);
-    } else {
-
-        wpa_hexdump_ascii(MSG_DEBUG,"EAP-NOOB: kz", data->Kz,KZ_LEN);
+    } else if (data->keying_mode == KEYING_RECONNECT_EXCHANGE_NO_ECDHE) {
+        wpa_hexdump_ascii(MSG_DEBUG,"EAP-NOOB: kz", Kz, KZ_LEN);
         eap_noob_ECDH_KDF_X9_63(out, KDF_LEN,
-                data->Kz, KZ_LEN,
+                Kz, KZ_LEN,
                 (unsigned char *)ALGORITHM_ID, ALGORITHM_ID_LEN,
                 data->kdf_nonce_data->Np, NONCE_LEN,
                 data->kdf_nonce_data->Ns, NONCE_LEN,
                 NULL, 0, md);
+    } else {
+        // Keying mode is 2 or 3; reconnecting with new ECDH key pair
+        eap_noob_ECDH_KDF_X9_63(out, KDF_LEN,
+                data->ecdh_exchange_data->shared_key, ECDH_SHARED_SECRET_LEN,
+                (unsigned char *)ALGORITHM_ID, ALGORITHM_ID_LEN,
+                data->kdf_nonce_data->Np, NONCE_LEN,
+                data->kdf_nonce_data->Ns, NONCE_LEN,
+                Kz, KZ_LEN, md);
     }
     wpa_hexdump_ascii(MSG_DEBUG,"EAP-NOOB: KDF",out,KDF_LEN);
 
@@ -715,7 +740,12 @@ int eap_noob_gen_KDF(struct eap_noob_data * data, int state)
         memcpy(data->kdf_out->Kz, out + counter, KZ_LEN);
 
         // Save for later use in the reconnect exchange.
-        if(state == COMPLETION_EXCHANGE) {
+        if (state == COMPLETION_EXCHANGE
+            || data->keying_mode == KEYING_RECONNECT_EXCHANGE_NEW_CRYPTOSUITE) {
+            if (data->Kz && data->keying_mode == KEYING_RECONNECT_EXCHANGE_NEW_CRYPTOSUITE) {
+                data->KzPrev = os_zalloc(KZ_LEN);
+                memcpy(data->KzPrev, data->Kz, KZ_LEN);
+            }
             data->Kz = os_zalloc(KZ_LEN);
             memcpy(data->Kz, out + counter, KZ_LEN);
         }
@@ -800,7 +830,7 @@ char * eap_noob_build_mac_input(const struct eap_noob_data * data,
     }
 
     // Cryptosuite chosen by peer
-    wpabuf_printf(mac_json, ",%u", data->cryptosuite);
+    wpabuf_printf(mac_json, ",%u", data->cryptosuitep);
 
     // Direction supported by the peer
     if (state == RECONNECTING_STATE) {
@@ -832,7 +862,7 @@ char * eap_noob_build_mac_input(const struct eap_noob_data * data,
     }
 
     // Public key server
-    if (state == RECONNECTING_STATE) {
+    if (!data->ecdh_exchange_data->jwk_serv) {
         wpabuf_printf(mac_json, ",\"\"");
     } else {
         wpabuf_printf(mac_json, ",%s", data->ecdh_exchange_data->jwk_serv);
@@ -843,7 +873,7 @@ char * eap_noob_build_mac_input(const struct eap_noob_data * data,
     wpabuf_printf(mac_json, ",\"%s\"", nonce);
 
     // Public key peer
-    if (state == RECONNECTING_STATE) {
+    if (!data->ecdh_exchange_data->jwk_peer) {
         wpabuf_printf(mac_json, ",\"\"");
     } else {
         wpabuf_printf(mac_json, ",%s", data->ecdh_exchange_data->jwk_peer);

@@ -9,24 +9,18 @@
 #define DB_NAME                 "/tmp/noob_server.db"
 #define DEVICE_TABLE            "devices"
 
-/* Unique server bitmasks to validate message structure.
- * Others are in the common header file */
-#define SERVER_NAME_RCVD        0x0400
-#define SERVER_URL_RCVD         0x0800
-#define WE_COUNT_RCVD           0x2000
-#define REALM_RCVD              0x4000
-#define ENCODE_RCVD             0x8000
-
 /* Bitmasks specifying expected parameters for each message */
-#define TYPE_ONE_PARAMS         (PEERID_RCVD|VERSION_RCVD|CRYPTOSUITE_RCVD|DIR_RCVD|INFO_RCVD)
-#define TYPE_TWO_PARAMS         (PEERID_RCVD|NONCE_RCVD|PKEY_RCVD)
-#define TYPE_THREE_PARAMS       (PEERID_RCVD)
-#define TYPE_FOUR_PARAMS        (PEERID_RCVD|MAC_RCVD)
-#define TYPE_FIVE_PARAMS        (PEERID_RCVD|CRYPTOSUITE_RCVD|INFO_RCVD)
-#define TYPE_SIX_PARAMS         (PEERID_RCVD|NONCE_RCVD)
-#define TYPE_SEVEN_PARAMS       (PEERID_RCVD|MAC_RCVD)
-#define TYPE_EIGHT_PARAMS       (PEERID_RCVD|NOOBID_RCVD)
-#define CONF_PARAMS             (DIR_RCVD|CRYPTOSUITE_RCVD|VERSION_RCVD|SERVER_NAME_RCVD|SERVER_URL_RCVD|WE_COUNT_RCVD|REALM_RCVD|ENCODE_RCVD|MAX_OOB_RETRIES_RCVD)
+#define TYPE_TWO_PARAMS         (PEERID_RCVD|VERSION_RCVD|CRYPTOSUITE_RCVD|DIR_RCVD|INFO_RCVD)
+#define TYPE_THREE_PARAMS       (PEERID_RCVD|NONCE_RCVD|PKEY_RCVD)
+#define TYPE_FOUR_PARAMS        (PEERID_RCVD)
+#define TYPE_FIVE_PARAMS        (PEERID_RCVD|NOOBID_RCVD)
+#define TYPE_SIX_PARAMS         (PEERID_RCVD|MAC_RCVD)
+// These are necessary, but type seven responses may also contain PeerInfo
+#define TYPE_SEVEN_PARAMS       (PEERID_RCVD|VERSION_RCVD|CRYPTOSUITE_RCVD)
+// May also contain PKp2
+#define TYPE_EIGHT_PARAMS       (PEERID_RCVD|NONCE_RCVD)
+#define TYPE_NINE_PARAMS        (PEERID_RCVD|MAC_RCVD)
+#define CONF_PARAMS             (DIR_RCVD|CRYPTOSUITE_RCVD|VERSION_RCVD|SERVER_NAME_RCVD|SERVER_URL_RCVD|WE_COUNT_RCVD|REALM_RCVD|ENCODE_RCVD|MAX_OOB_RETRIES_RCVD|FORWARD_SECRECY_RCVD)
 
 /* Statements to create server database tables */
 #define CREATE_TABLES_EPHEMERALSTATE                \
@@ -97,6 +91,7 @@ struct eap_noob_global_conf {
     char * realm;
     int len_realm;
     int oob_encode;
+    int forward_secrecy;
 };
 
 struct eap_noob_server_config_params {

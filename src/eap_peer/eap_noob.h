@@ -8,24 +8,18 @@
 /* All the pre-processors of EAP-NOOB */
 #define DB_NAME                     "/tmp/noob_peer.db"
 
-/* Unique peer bitmasks to validate message structure.
- * Others are in the common header file */
-#define PEER_MAKE_RCVD              0x0400
-#define PEER_ID_NUM_RCVD            0x0800
-#define DEF_MIN_SLEEP_RCVD          0x2000
-#define MSG_ENC_FMT_RCVD            0x4000
-#define PEER_TYPE_RCVD              0x8000
-
 /* Bitmasks specifying expected parameters for each message */
-#define TYPE_ONE_PARAMS             (PEERID_RCVD|VERSION_RCVD|CRYPTOSUITE_RCVD|DIR_RCVD|INFO_RCVD)
-#define TYPE_TWO_PARAMS             (PEERID_RCVD|NONCE_RCVD|PKEY_RCVD)
-#define TYPE_THREE_PARAMS           (PEERID_RCVD)
-#define TYPE_FOUR_PARAMS            (PEERID_RCVD|MAC_RCVD|NOOBID_RCVD)
-#define TYPE_FIVE_PARAMS            (PEERID_RCVD|CRYPTOSUITE_RCVD|INFO_RCVD)
-#define TYPE_SIX_PARAMS             (PEERID_RCVD|NONCE_RCVD)
-#define TYPE_SEVEN_PARAMS           (PEERID_RCVD|MAC_RCVD)
-#define TYPE_HINT_PARAMS            (PEERID_RCVD)
-#define CONF_PARAMS                 (DIR_RCVD|CRYPTOSUITE_RCVD|VERSION_RCVD|PEER_TYPE_RCVD|PEER_ID_NUM_RCVD|PEER_TYPE_RCVD|MAX_OOB_RETRIES_RCVD)
+#define TYPE_TWO_PARAMS            (PEERID_RCVD|VERSION_RCVD|CRYPTOSUITE_RCVD|DIR_RCVD|INFO_RCVD)
+#define TYPE_THREE_PARAMS          (PEERID_RCVD|NONCE_RCVD|PKEY_RCVD)
+#define TYPE_FOUR_PARAMS           (PEERID_RCVD)
+#define TYPE_FIVE_PARAMS           (PEERID_RCVD)
+#define TYPE_SIX_PARAMS            (PEERID_RCVD|MAC_RCVD|NOOBID_RCVD)
+// These are mandatory, but the type seven request may also contain ServerInfo
+#define TYPE_SEVEN_PARAMS          (PEERID_RCVD|VERSION_RCVD|CRYPTOSUITE_RCVD)
+// May contain PKs2
+#define TYPE_EIGHT_PARAMS          (PEERID_RCVD|KEYING_MODE_RCVD|NONCE_RCVD)
+#define TYPE_NINE_PARAMS           (PEERID_RCVD|MAC_RCVD)
+#define CONF_PARAMS                (DIR_RCVD|CRYPTOSUITE_RCVD|VERSION_RCVD|PEER_TYPE_RCVD|PEER_ID_NUM_RCVD|PEER_TYPE_RCVD|MAX_OOB_RETRIES_RCVD)
 
 /* Statements to create peer database tables */
 #define CREATE_TABLES_EPHEMERALSTATE                \

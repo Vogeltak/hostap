@@ -16,6 +16,7 @@
 #define MACS_TYPE               2
 #define MACP_TYPE               1
 #define FORMAT_BASE64URL        1
+#define DEFAULT_FORWARD_SECRECY 1
 
 /* Maximum values for fields */
 #define MAX_SUP_VER             3
@@ -45,6 +46,7 @@
 #define METHOD_ID_LEN           32
 
 /* Common bitmasks to validate message structure */
+// TODO: Update these to be in a logical order (i.e. first common, then unique)
 #define PEERID_RCVD                 0x0001
 #define DIR_RCVD                    0x0002
 #define CRYPTOSUITE_RCVD            0x0004
@@ -55,8 +57,24 @@
 #define INFO_RCVD                   0x0080
 #define STATE_RCVD                  0x0100
 #define MINSLP_RCVD                 0x0200
+#define SERVER_NAME_RCVD            0x0400
+#define PEER_MAKE_RCVD              0x0400
+#define SERVER_URL_RCVD             0x0800
+#define PEER_ID_NUM_RCVD            0x0800
 #define NOOBID_RCVD                 0x1000
+#define WE_COUNT_RCVD               0x2000
+#define DEF_MIN_SLEEP_RCVD          0x2000
+#define REALM_RCVD                  0x4000
+#define MSG_ENC_FMT_RCVD            0x4000
+#define ENCODE_RCVD                 0x8000
+#define PEER_TYPE_RCVD              0x8000
 #define MAX_OOB_RETRIES_RCVD       0x10000
+#define FORWARD_SECRECY_RCVD       0x10001
+#define KEYING_MODE_RCVD           0x10002
+
+
+/* Unique peer bitmasks to validate message structure.
+ * Others are in the common header file */
 
 /* Valid or invalid states */
 #define INVALID                 0
@@ -148,10 +166,8 @@ enum {KEYING_COMPLETION_EXCHANGE,
 enum {UNREGISTERED_STATE, WAITING_FOR_OOB_STATE, OOB_RECEIVED_STATE, RECONNECTING_STATE, REGISTERED_STATE};
 
 /* Message types, see https://tools.ietf.org/html/draft-ietf-emu-eap-noob-01#section-4.2 */
-// TODO: Update to latest draft, where type 9 is now type 1
-enum {NONE, EAP_NOOB_TYPE_HANDSHAKE, EAP_NOOB_TYPE_INITIAL_PARAMS, EAP_NOOB_TYPE_INITIAL_CRYPTO,
-    EAP_NOOB_TYPE_WAITING, EAP_NOOB_TYPE_COMPLETION_NOOBID, EAP_NOOB_TYPE_COMPLETION_HMAC,
-    EAP_NOOB_TYPE_RECONNECT_PARAMS, EAP_NOOB_TYPE_RECONNECT_CRYPTO, EAP_NOOB_TYPE_RECONNECT_HMAC};
+enum {NONE, EAP_NOOB_TYPE_1, EAP_NOOB_TYPE_2, EAP_NOOB_TYPE_3, EAP_NOOB_TYPE_4,
+    EAP_NOOB_TYPE_5, EAP_NOOB_TYPE_6, EAP_NOOB_TYPE_7, EAP_NOOB_TYPE_8, EAP_NOOB_TYPE_9};
 
 enum eap_noob_err_code {NO_ERROR, E1001, E1002, E1003, E1004, E1007, E2001, E2002,
                         E2003, E2004, E3001, E3002, E3003, E4001, E5001, E5002, E5003, E5004};
@@ -206,8 +222,8 @@ struct eap_noob_data {
     u32 versions[MAX_SUP_VER];
     u32 version;
     u32 cryptosuites[MAX_SUP_CSUITES];
-    u32 cryptosuite;
-    u32 cryptosuite_prev;
+    u32 cryptosuitep;
+    u32 cryptosuitep_prev;
     u32 dirs;
     u32 dirp;
     u32 sleeptime;
@@ -288,7 +304,7 @@ int eap_noob_ECDH_KDF_X9_63(unsigned char *out, size_t outlen,
         const unsigned char * partyVinfo, size_t partyVinfo_len,
         const unsigned char * suppPrivinfo, size_t suppPrivinfo_len,
         const EVP_MD * md);
-int eap_noob_gen_KDF(struct eap_noob_data * data, int state);
+int eap_noob_gen_KDF(struct eap_noob_data * data, int state, bool use_prev_Kz);
 char * eap_noob_build_mac_input(const struct eap_noob_data * data,
                                        int first_param, int state);
 u8 * eap_noob_gen_MAC(const struct eap_noob_data * data, int type, u8 * key, int keylen, int state);
