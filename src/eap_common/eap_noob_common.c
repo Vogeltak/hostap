@@ -78,6 +78,17 @@ const int state_message_check[NUM_OF_STATES][NUM_MSG_TYPES] = {
     {VALID, VALID, INVALID, INVALID, INVALID, INVALID, VALID,   INVALID, INVALID, INVALID}  // REGISTERED_STATE
 };
 
+/*
+ * Stores the OpenSSL NID for all cryptosuites mentioned in the EAP-NOOB specification.
+ * See https://tools.ietf.org/html/draft-ietf-emu-eap-noob-01.
+ * Support for any of these ultimately still depends on the server and peer.
+ */
+const int cryptosuites_openssl[MAX_NUM_CSUITES + 1] = {
+    0,
+    NID_X25519,
+    NID_X9_62_prime256v1
+};
+
 void eap_noob_set_error(struct eap_noob_data *data, int val)
 {
     data->next_req = NONE;
