@@ -288,6 +288,8 @@ static int eap_noob_get_key(struct eap_noob_data * data)
 	Server = Alice
 */
 
+    // TODO: Switch between test vector for cryptosuite 1 (X25519) and
+    // test vector for cryptosuite 2 (NIST P-256)
     char * priv_key_test_vector = "MC4CAQAwBQYDK2VuBCIEIF2rCH5iSopLeeF/i4OADuZvO7EpJhi2/Rwviyf/iODr";
     BIO* b641 = BIO_new(BIO_f_base64());
     BIO* mem1 = BIO_new(BIO_s_mem());
@@ -298,15 +300,15 @@ static int eap_noob_get_key(struct eap_noob_data * data)
 
     wpa_printf(MSG_DEBUG, "EAP-NOOB: entering %s", __func__);
 
-    /* Initialize context to generate keys - Curve25519 */
-    if (NULL == (pctx = EVP_PKEY_CTX_new_id(NID_X25519, NULL))) {
+    /* Initialize context to generate keys */
+    if (NULL == (pctx = EVP_PKEY_CTX_new_id(cryptosuites_openssl[data->cryptosuitep], NULL))) {
         wpa_printf(MSG_DEBUG, "EAP-NOOB: Fail to create context for parameter generation.");
         ret = FAILURE; goto EXIT;
     }
 
     EVP_PKEY_keygen_init(pctx);
 
-    /* Generate X25519 key pair */
+    /* Generate EC key pair */
     //EVP_PKEY_keygen(pctx, &data->ecdh_exchange_data->dh_key);
 
 /*
@@ -326,6 +328,7 @@ static int eap_noob_get_key(struct eap_noob_data * data)
         ret = FAILURE; goto EXIT;
     }
 
+    // TODO: Is MAX_X25519_LEN equal to max length for NIST P-256?
     pub_key_char = os_zalloc(MAX_X25519_LEN);
     pub_key_len = BIO_read(mem_pub, pub_key_char, MAX_X25519_LEN);
 

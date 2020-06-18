@@ -417,6 +417,7 @@ static void eap_noob_assign_config(char * conf_name, char * conf_value, struct e
         do {
             int len = strcspn(tmp, token);
             data->cryptosuites[i] = (int) strtol(tmp, &tmp + len, 10);
+            wpa_printf(MSG_DEBUG, "EAP-NOOB: Server supports cryptosuite %d", data->cryptosuites[i]);
             tmp += len + 1;
             i++;
         } while (tmp[-1] && i < MAX_SUP_CSUITES);
@@ -867,6 +868,8 @@ static int eap_noob_get_key(struct eap_noob_data * data)
 */
 
 
+    // TODO: Switch between test vector for cryptosuite 1 (X25519) and
+    // test vector for cryptosuite 2 (NIST P-256)
     char * priv_key_test_vector = "MC4CAQAwBQYDK2VuBCIEIHcHbQpzGKV9PBbBclGyZkXfTC+H68CZKrF3+6UduSwq";
     BIO* b641 = BIO_new(BIO_f_base64());
     BIO* mem1 = BIO_new(BIO_s_mem());
@@ -876,15 +879,15 @@ static int eap_noob_get_key(struct eap_noob_data * data)
 
     wpa_printf(MSG_DEBUG, "EAP-NOOB: entering %s", __func__);
 
-    /* Initialize context to generate keys - Curve25519 */
-    if (NULL == (pctx = EVP_PKEY_CTX_new_id(NID_X25519, NULL))) {
+    /* Initialize context to generate keys */
+    if (NULL == (pctx = EVP_PKEY_CTX_new_id(cryptosuites_openssl[data->cryptosuitep], NULL))) {
         wpa_printf(MSG_DEBUG, "EAP-NOOB: Fail to create context for parameter generation.");
         ret = FAILURE; goto EXIT;
     }
 
     EVP_PKEY_keygen_init(pctx);
 
-    /* Generate X25519 key pair */
+    /* Generate EC key pair */
    //EVP_PKEY_keygen(pctx, &data->ecdh_exchange_data->dh_key);
 
 /*
@@ -904,6 +907,7 @@ static int eap_noob_get_key(struct eap_noob_data * data)
         ret = FAILURE; goto EXIT;
     }
 
+    // TODO: Is MAX_X25519_LEN equal to max length for NIST P-256?
     pub_key_char = os_zalloc(MAX_X25519_LEN);
     pub_key_len = BIO_read(mem_pub, pub_key_char, MAX_X25519_LEN);
 
@@ -2483,6 +2487,7 @@ static int eap_noob_server_ctxt_init(struct eap_noob_data * data, struct eap_sm 
         wpa_printf(MSG_DEBUG, "EAP-NOOB: Failed to initialize context");
         return FAILURE;
     }
+    wpa_printf(MSG_DEBUG, "EAP-NOOB: Finished reading config");
 
     if (sm->identity) {
         NAI = os_zalloc(sm->identity_len+1);
@@ -2493,10 +2498,11 @@ static int eap_noob_server_ctxt_init(struct eap_noob_data * data, struct eap_sm 
         os_memcpy(NAI, sm->identity, sm->identity_len);
         strcat(NAI, "\0");
     }
+    wpa_printf(MSG_DEBUG, "EAP-NOOB: Finished retrieving NAI");
 
     if (SUCCESS == (retval = eap_noob_parse_NAI(data, NAI))) {
         if (data->err_code == NO_ERROR) {
-            // Always set the next request to type 9, because every Exchange
+            // Always set the next request to type 1, because every Exchange
             // must start with the Common Handshake,
             // as per version 8 of the draft.
             data->next_req = EAP_NOOB_TYPE_1;
@@ -2506,6 +2512,7 @@ static int eap_noob_server_ctxt_init(struct eap_noob_data * data, struct eap_sm 
     EAP_NOOB_FREE(NAI);
     if (retval == FAILURE)
         wpa_printf(MSG_DEBUG, "EAP-NOOB: Failed to initialize context");
+    wpa_printf(MSG_DEBUG, "EAP-NOOB: Finished context init");
     return retval;
 }
 

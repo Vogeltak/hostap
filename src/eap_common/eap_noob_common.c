@@ -83,7 +83,7 @@ const int state_message_check[NUM_OF_STATES][NUM_MSG_TYPES] = {
  * See https://tools.ietf.org/html/draft-ietf-emu-eap-noob-01.
  * Support for any of these ultimately still depends on the server and peer.
  */
-const int cryptosuites_openssl[MAX_NUM_CSUITES + 1] = {
+const int cryptosuites_openssl[MAX_SUP_CSUITES + 1] = {
     0,
     NID_X25519,
     NID_X9_62_prime256v1
