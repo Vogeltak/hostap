@@ -410,8 +410,20 @@ static void eap_noob_assign_config(char * conf_name, char * conf_value, struct e
         wpa_printf(MSG_DEBUG, "EAP-NOOB: FILE  READ= %d", data->versions[0]);
     }
     else if (0 == strcmp("Csuite",conf_name)) {
-        data->cryptosuites[0] = (int) strtol(conf_value, NULL, 10); data->config_params |= CRYPTOSUITE_RCVD;
-        wpa_printf(MSG_DEBUG, "EAP-NOOB: FILE  READ= %d", data->cryptosuites[0]);
+        char *tmp = conf_value;
+        const char *token = ",";
+        int i = 0;
+
+        do {
+            int len = strcspn(tmp, token);
+            data->cryptosuites[i] = (int) strtol(tmp, &tmp + len, 10);
+            tmp += len + 1;
+            i++;
+        } while (tmp[-1] && i < MAX_SUP_CSUITES);
+
+        data->config_params |= CRYPTOSUITE_RCVD;
+
+        wpa_printf(MSG_DEBUG, "EAP-NOOB: FILE  READ = %d cryptosuites", i);
     }
     else if (0 == strcmp("OobDirs",conf_name)) {
         data->dirs = (int) strtol(conf_value, NULL, 10); data->config_params |= DIR_RCVD;
