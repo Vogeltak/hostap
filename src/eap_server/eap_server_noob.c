@@ -615,7 +615,7 @@ static char * eap_noob_prepare_server_info_string(struct eap_noob_server_config_
  *  @x_64 : x co-ordinate in base64url format
  *  Returns : FAILURE/SUCCESS
 **/
-static int eap_noob_build_JWK(char ** jwk, const char * x_b64)
+static int eap_noob_build_JWK(struct eap_noob_data *data, char ** jwk, const char * x_b64)
 {
     struct wpabuf * json;
     size_t len = 500;
@@ -634,7 +634,7 @@ static int eap_noob_build_JWK(char ** jwk, const char * x_b64)
     json_start_object(json, NULL);
     json_add_string(json, KEY_TYPE, "EC");
     json_value_sep(json);
-    json_add_string(json, CURVE, "P-256");
+    json_add_string(json, CURVE, cryptosuites_names[data->cryptosuitep]);
     json_value_sep(json);
     json_add_string(json, X_COORDINATE, x_b64);
     json_end_object(json);
@@ -1100,7 +1100,7 @@ static struct wpabuf * eap_noob_build_type_eight(struct eap_noob_data * data, u8
         }
 
         // Build JWK to represent server
-        if (FAILURE == eap_noob_build_JWK(&data->ecdh_exchange_data->jwk_serv,
+        if (FAILURE == eap_noob_build_JWK(data, &data->ecdh_exchange_data->jwk_serv,
                     data->ecdh_exchange_data->x_b64)) {
             wpa_printf(MSG_DEBUG, "EAP-NOOB: Failed to generate JWK");
             goto EXIT;
@@ -1446,7 +1446,7 @@ static struct wpabuf * eap_noob_build_type_three(struct eap_noob_data *data, u8 
     }
 
     // Build JWK to represent server
-    if (FAILURE == eap_noob_build_JWK(&data->ecdh_exchange_data->jwk_serv,
+    if (FAILURE == eap_noob_build_JWK(data, &data->ecdh_exchange_data->jwk_serv,
                 data->ecdh_exchange_data->x_b64)) {
         wpa_printf(MSG_DEBUG, "EAP-NOOB: Failed to generate JWK");
         goto EXIT;

@@ -287,6 +287,7 @@ extern const int next_request_type[];
 extern const int state_message_check[NUM_OF_STATES][NUM_MSG_TYPES];
 // Cryptosuite IDs start counting from 1
 extern const int cryptosuites_openssl[MAX_SUP_CSUITES + 1];
+extern const char *cryptosuites_names[MAX_SUP_CSUITES + 1];
 
 #define EAP_NOOB_STATE_VALID                                                              \
     (state_machine[data->server_state][data->peer_state] == VALID)   \

@@ -86,7 +86,17 @@ const int state_message_check[NUM_OF_STATES][NUM_MSG_TYPES] = {
 const int cryptosuites_openssl[MAX_SUP_CSUITES + 1] = {
     0,
     NID_X25519,
+    //NID_secp256k1
     NID_X9_62_prime256v1
+};
+
+/*
+ * Stores the corresponding name for all cryptosuites defined above.
+ */
+const char *cryptosuites_names[MAX_SUP_CSUITES + 1] = {
+    "",
+    SN_X25519,
+    SN_X9_62_prime256v1
 };
 
 void eap_noob_set_error(struct eap_noob_data *data, int val)
