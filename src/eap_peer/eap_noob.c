@@ -276,21 +276,27 @@ static void columns_ephemeralnoob(struct eap_noob_data * data, sqlite3_stmt * st
 static int eap_noob_get_key(struct eap_noob_data * data)
 {
     EVP_PKEY_CTX * pctx = NULL;
+    EVP_PKEY_CTX * kctx = NULL;
+    EVP_PKEY *params = NULL;
     BIO * mem_pub = BIO_new(BIO_s_mem());
     unsigned char * pub_key_char = NULL;
     size_t pub_key_len = 0;
     int ret = SUCCESS;
 
+    // Depending on the negotiated cryptosuite, the peer should use a
+    // different test vector.
+    char *test_vectors[MAX_SUP_CSUITES + 1] = {
+        "",
+        "MC4CAQAwBQYDK2VuBCIEIF2rCH5iSopLeeF/i4OADuZvO7EpJhi2/Rwviyf/iODr",
+        "xu+cXXiuASoBEWSss5fOIIhoXY8Gv5vgsoOrRkdr7lM="
+    };
 
-/*
-	Uncomment this code for using the test vectors of Curve25519 in RFC 7748.
-	Peer = Bob
-	Server = Alice
-*/
-
-    // TODO: Switch between test vector for cryptosuite 1 (X25519) and
-    // test vector for cryptosuite 2 (NIST P-256)
-    char * priv_key_test_vector = "MC4CAQAwBQYDK2VuBCIEIF2rCH5iSopLeeF/i4OADuZvO7EpJhi2/Rwviyf/iODr";
+    /*
+     * Uncomment this code for using the test vectors of Curve25519 in RFC 7748.
+     * Peer = Bob
+     * Server = Alice
+     */
+    char * priv_key_test_vector = test_vectors[data->cryptosuitep];
     BIO* b641 = BIO_new(BIO_f_base64());
     BIO* mem1 = BIO_new(BIO_s_mem());
     BIO_set_flags(b641,BIO_FLAGS_BASE64_NO_NL);
@@ -300,24 +306,63 @@ static int eap_noob_get_key(struct eap_noob_data * data)
 
     wpa_printf(MSG_DEBUG, "EAP-NOOB: entering %s", __func__);
 
-    /* Initialize context to generate keys */
-    if (NULL == (pctx = EVP_PKEY_CTX_new_id(cryptosuites_openssl[data->cryptosuitep], NULL))) {
-        wpa_printf(MSG_DEBUG, "EAP-NOOB: Fail to create context for parameter generation.");
-        ret = FAILURE; goto EXIT;
+    wpa_printf(MSG_DEBUG, "EAP-NOOB: Using cryptosuite %d: %s with id %d", data->cryptosuitep, cryptosuites_names[data->cryptosuitep], cryptosuites_openssl[data->cryptosuitep]);
+
+    if (cryptosuites_openssl[data->cryptosuitep] == NID_X25519) {
+        /* Initialize context to generate keys */
+        if (NULL == (kctx = EVP_PKEY_CTX_new_id(cryptosuites_openssl[data->cryptosuitep], NULL))) {
+            wpa_printf(MSG_DEBUG, "EAP-NOOB: Fail to create context for parameter generation.");
+            ret = FAILURE; goto EXIT;
+        }
+
+        EVP_PKEY_keygen_init(pctx);
+    } else {
+        if (NULL == (pctx = EVP_PKEY_CTX_new_id(EVP_PKEY_EC, NULL))) {
+            wpa_printf(MSG_DEBUG, "EAP-NOOB: Fail to create context for parameter generation.");
+            ret = FAILURE; goto EXIT;
+        }
+
+        /* Initialise the parameter generation */
+        if(1 != EVP_PKEY_paramgen_init(pctx)){
+            wpa_printf(MSG_DEBUG, "EAP-NOOB: Fail to initialize parameter generation.");
+            ret = FAILURE; goto EXIT;
+        }
+
+        /* Set the EC curve to the one that is negotiated */
+        if (1 != EVP_PKEY_CTX_set_ec_paramgen_curve_nid(pctx, cryptosuites_openssl[data->cryptosuitep])) {
+            wpa_printf(MSG_DEBUG, "EAP-NOOB: Fail to set EC paramgen curve");
+            ret = FAILURE; goto EXIT;
+        }
+
+        /* Generate the EC curve params */
+        if (1 != EVP_PKEY_paramgen(pctx, &params)) {
+            wpa_printf(MSG_DEBUG, "EAP-NOOB: Fail to generate params");
+            ret = FAILURE; goto EXIT;
+        }
+
+        /* Create the context for the key generation */
+        if (NULL == (kctx = EVP_PKEY_CTX_new(params, NULL))) {
+            wpa_printf(MSG_DEBUG, "EAP-NOOB: Fail to create context for key generation");
+            ret = FAILURE; goto EXIT;
+        }
+
+        if (1 != EVP_PKEY_keygen_init(kctx)) {
+            wpa_printf(MSG_DEBUG, "EAP-NOOB: Fail to initialize key generation");
+            ret = FAILURE; goto EXIT;
+        }
     }
 
-    EVP_PKEY_keygen_init(pctx);
-
     /* Generate EC key pair */
-    //EVP_PKEY_keygen(pctx, &data->ecdh_exchange_data->dh_key);
+    EVP_PKEY_keygen(kctx, &data->ecdh_exchange_data->dh_key);
 
 /*
 	If you are using the RFC 7748 test vector, you do not need to generate a key pair. Instead you use the
     private key from the RFC. In this case, comment out the line above and uncomment the following line
     code
 */
-    d2i_PrivateKey_bio(mem1,&data->ecdh_exchange_data->dh_key);
+    //d2i_PrivateKey_bio(mem1,&data->ecdh_exchange_data->dh_key);
 
+    // TODO: Segmentation fault occurs here when using test vector
     PEM_write_PrivateKey(stdout, data->ecdh_exchange_data->dh_key,
                          NULL, NULL, 0, NULL, NULL);
     PEM_write_PUBKEY(stdout, data->ecdh_exchange_data->dh_key);
