@@ -944,27 +944,33 @@ u8 * eap_noob_gen_MAC(const struct eap_noob_data * data, int type, u8 * key, int
     return mac;
 }
 
-int eap_noob_derive_secret(struct eap_noob_data * data, size_t * secret_len)
+int eap_noob_derive_session_secret(struct eap_noob_data * data, size_t * secret_len)
 {
     EVP_PKEY_CTX * ctx = NULL;
-    EVP_PKEY * serverkey = NULL;
-    unsigned char * server_pub_key  = NULL;
+    EVP_PKEY * remote_key = NULL;
+    unsigned char * remote_pub_key = NULL;
     size_t skeylen = 0, len = 0;
     int ret = SUCCESS;
 
     wpa_printf(MSG_DEBUG, "EAP-NOOB: Entering function %s", __func__);
     if (NULL == data || NULL == secret_len) {
-        wpa_printf(MSG_DEBUG, "EAP-NOOB: Server context is NULL");
+        wpa_printf(MSG_DEBUG, "EAP-NOOB: EAP-NOOB data is NULL");
         return FAILURE;
     }
+
     EAP_NOOB_FREE(data->ecdh_exchange_data->shared_key);
-    len = eap_noob_Base64Decode(data->ecdh_exchange_data->x_b64_remote, &server_pub_key);
+    len = eap_noob_Base64Decode(data->ecdh_exchange_data->x_b64_remote, &remote_pub_key);
     if (len == 0) {
-        wpa_printf(MSG_DEBUG, "EAP-NOOB: Failed to decode");
+        wpa_printf(MSG_DEBUG, "EAP-NOOB: Failed to decode public key of remote party");
         ret = FAILURE; goto EXIT;
     }
 
-    serverkey = EVP_PKEY_new_raw_public_key(EVP_PKEY_X25519, NULL, server_pub_key, len);
+    // TODO: Differentiate based on negotiated cryptosuitep
+    remote_key = EVP_PKEY_new_raw_public_key(EVP_PKEY_X25519, NULL, remote_pub_key, len);
+    if(remote_key == NULL) {
+        wpa_printf(MSG_DEBUG, "EAP-NOOB: Failed to initialize public key of remote party");
+        ret = FAILURE; goto EXIT;
+    }
 
     ctx = EVP_PKEY_CTX_new(data->ecdh_exchange_data->dh_key, NULL);
     if (!ctx) {
@@ -977,7 +983,7 @@ int eap_noob_derive_secret(struct eap_noob_data * data, size_t * secret_len)
         ret = FAILURE; goto EXIT;
     }
 
-    if (EVP_PKEY_derive_set_peer(ctx, serverkey) <= 0) {
+    if (EVP_PKEY_derive_set_peer(ctx, remote_key) <= 0) {
         wpa_printf(MSG_DEBUG, "EAP-NOOB: Failed to set peer key");
         ret = FAILURE; goto EXIT;
     }
@@ -1008,7 +1014,7 @@ EXIT:
     if (ctx)
         EVP_PKEY_CTX_free(ctx);
 
-    EAP_NOOB_FREE(server_pub_key);
+    EAP_NOOB_FREE(remote_pub_key);
 
     if (ret != SUCCESS)
         EAP_NOOB_FREE(data->ecdh_exchange_data->shared_key);

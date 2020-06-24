@@ -777,100 +777,30 @@ static void eap_noob_get_sid(struct eap_sm * sm, struct eap_noob_data * data)
     EAP_NOOB_FREE(query);
 }
 
-static int eap_noob_derive_session_secret(struct eap_noob_data * data, size_t * secret_len)
-{
-    EVP_PKEY_CTX * ctx = NULL;
-    EVP_PKEY * peerkey = NULL;
-    unsigned char * peer_pub_key = NULL;
-    size_t skeylen = 0, len = 0;
-    int ret = SUCCESS;
-
-    wpa_printf(MSG_DEBUG, "EAP-NOOB: Entering function %s", __func__);
-    if (NULL == data || NULL == secret_len) {
-        wpa_printf(MSG_DEBUG, "EAP-NOOB: server data is NULL");
-        return FAILURE;
-    }
-
-    EAP_NOOB_FREE(data->ecdh_exchange_data->shared_key);
-    len = eap_noob_Base64Decode(data->ecdh_exchange_data->x_b64_remote, &peer_pub_key);
-    if (len == 0) {
-        wpa_printf(MSG_DEBUG, "EAP-NOOB: Failed to decode public key of peer");
-        ret = FAILURE; goto EXIT;
-    }
-
-    peerkey = EVP_PKEY_new_raw_public_key(EVP_PKEY_X25519, NULL, peer_pub_key, len);
-    if(peerkey == NULL) {
-        wpa_printf(MSG_DEBUG, "EAP-NOOB: Failed to initialize public key of peer");
-        ret = FAILURE; goto EXIT;
-    }
-
-    ctx = EVP_PKEY_CTX_new(data->ecdh_exchange_data->dh_key, NULL);
-    if (!ctx) {
-        wpa_printf(MSG_DEBUG, "EAP-NOOB: Failed to create context");
-        ret = FAILURE; goto EXIT;
-    }
-
-    if (EVP_PKEY_derive_init(ctx) <= 0) {
-        wpa_printf(MSG_DEBUG, "EAP-NOOB: Failed to init key derivation");
-        ret = FAILURE; goto EXIT;
-    }
-
-    if (EVP_PKEY_derive_set_peer(ctx, peerkey) <= 0) {
-        wpa_printf(MSG_DEBUG, "EAP-NOOB: Failed to set peer key");
-        ret = FAILURE; goto EXIT;
-    }
-
-    if (EVP_PKEY_derive(ctx, NULL, &skeylen) <= 0) {
-        wpa_printf(MSG_DEBUG, "EAP-NOOB: Failed to get secret key len");
-        ret = FAILURE; goto EXIT;
-    }
-
-    data->ecdh_exchange_data->shared_key  = OPENSSL_malloc(skeylen);
-
-    if (!data->ecdh_exchange_data->shared_key) {
-        wpa_printf(MSG_DEBUG, "EAP-NOOB: Failed to allocate memory for secret");
-        ret = FAILURE; goto EXIT;
-    }
-
-    if (EVP_PKEY_derive(ctx, data->ecdh_exchange_data->shared_key, &skeylen) <= 0) {
-        wpa_printf(MSG_DEBUG, "EAP-NOOB: Failed to derive secret key");
-        ret = FAILURE; goto EXIT;
-    }
-
-    (*secret_len) = skeylen;
-
-    wpa_hexdump_ascii(MSG_DEBUG,"EAP-NOOB: Secret Derived",
-            data->ecdh_exchange_data->shared_key, *secret_len);
-
-EXIT:
-    if (ctx)
-        EVP_PKEY_CTX_free(ctx);
-
-    EAP_NOOB_FREE(peer_pub_key);
-
-    if (ret != SUCCESS)
-        EAP_NOOB_FREE(data->ecdh_exchange_data->shared_key);
-
-    return ret;
-}
 static int eap_noob_get_key(struct eap_noob_data * data)
 {
     EVP_PKEY_CTX * pctx = NULL;
+    EVP_PKEY_CTX * kctx = NULL;
+    EVP_PKEY *params = NULL;
     BIO * mem_pub = BIO_new(BIO_s_mem());
     unsigned char * pub_key_char = NULL;
     size_t pub_key_len = 0;
     int ret = SUCCESS;
 
-/*
-    Uncomment the next 6 lines of code for using the test vectors of Curve25519 in RFC 7748.
-    Peer = Bob
-    Server = Alice
-*/
+    // Depending on the negotiated cryptosuite, the server should use a
+    // different test vector.
+    char *test_vectors[MAX_SUP_CSUITES + 1] = {
+        "",
+        "MC4CAQAwBQYDK2VuBCIEIHcHbQpzGKV9PBbBclGyZkXfTC+H68CZKrF3+6UduSwq",
+        "yI8B9RDZrD9wopLaojFt5UTpqriv6EBJxiqcV4YtFDM="
+    };
 
-
-    // TODO: Switch between test vector for cryptosuite 1 (X25519) and
-    // test vector for cryptosuite 2 (NIST P-256)
-    char * priv_key_test_vector = "MC4CAQAwBQYDK2VuBCIEIHcHbQpzGKV9PBbBclGyZkXfTC+H68CZKrF3+6UduSwq";
+    /*
+     * Uncomment this code for using the test vectors of Curve25519 in RFC 7748.
+     * Peer = Bob
+     * Server = Alice
+     */
+    char * priv_key_test_vector = test_vectors[data->cryptosuitep];
     BIO* b641 = BIO_new(BIO_f_base64());
     BIO* mem1 = BIO_new(BIO_s_mem());
     BIO_set_flags(b641,BIO_FLAGS_BASE64_NO_NL);

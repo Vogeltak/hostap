@@ -310,7 +310,7 @@ int eap_noob_gen_KDF(struct eap_noob_data * data, int state, bool use_prev_Kz);
 char * eap_noob_build_mac_input(const struct eap_noob_data * data,
                                        int first_param, int state);
 u8 * eap_noob_gen_MAC(const struct eap_noob_data * data, int type, u8 * key, int keylen, int state);
-int eap_noob_derive_secret(struct eap_noob_data * data, size_t * secret_len);
+int eap_noob_derive_session_secret(struct eap_noob_data * data, size_t * secret_len);
 int eap_noob_db_statements(sqlite3 * db, const char * query);
 int eap_noob_exec_query(struct eap_noob_data * data, const char * query,
                                void (*callback)(struct eap_noob_data *, sqlite3_stmt *),

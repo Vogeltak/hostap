@@ -825,7 +825,7 @@ static struct wpabuf * eap_noob_build_type_8(struct eap_noob_data * data, u8 id)
         }
 
         // Derive shared secret and encode in base 64
-        eap_noob_derive_secret(data, &secret_len);
+        eap_noob_derive_session_secret(data, &secret_len);
         data->ecdh_exchange_data->shared_key_b64_len = eap_noob_Base64Encode(
                     data->ecdh_exchange_data->shared_key,
                     ECDH_SHARED_SECRET_LEN,
@@ -1095,7 +1095,7 @@ static struct wpabuf * eap_noob_build_type_3(struct eap_noob_data * data, u8 id)
     }
 
     // Derive shared secret and encode in base 64
-    eap_noob_derive_secret(data, &secret_len);
+    eap_noob_derive_session_secret(data, &secret_len);
     data->ecdh_exchange_data->shared_key_b64_len = eap_noob_Base64Encode(
                 data->ecdh_exchange_data->shared_key,
                 ECDH_SHARED_SECRET_LEN,
