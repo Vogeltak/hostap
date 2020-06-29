@@ -410,17 +410,26 @@ static void eap_noob_assign_config(char * conf_name, char * conf_value, struct e
         wpa_printf(MSG_DEBUG, "EAP-NOOB: FILE  READ= %d", data->versions[0]);
     }
     else if (0 == strcmp("Csuite",conf_name)) {
-        char *tmp = conf_value;
-        const char *token = ",";
+        int len = MAX_SUP_CSUITES * 2;
+
+        // Input to strtok may not be a string literal, therefore the conf_value
+        // is copied to a character array.
+        char tmp[len];
+        strcpy(tmp, conf_value);
+
+        // Ensure that the last element is a null terminator for valid string.
+        tmp[len - 1] = '\0';
+
+        const char *delim = ",";
+        char *tok = strtok(tmp, delim);
         int i = 0;
 
-        do {
-            int len = strcspn(tmp, token);
-            data->cryptosuites[i] = (int) strtol(tmp, &tmp + len, 10);
+        while (tok != NULL) {
+            data->cryptosuites[i] = (int) strtol(tok, NULL, 10);
             wpa_printf(MSG_DEBUG, "EAP-NOOB: Server supports cryptosuite %d", data->cryptosuites[i]);
-            tmp += len + 1;
+            tok = strtok(NULL, delim);
             i++;
-        } while (tmp[-1] && i < MAX_SUP_CSUITES);
+        }
 
         data->config_params |= CRYPTOSUITE_RCVD;
 
@@ -637,6 +646,10 @@ static int eap_noob_build_JWK(struct eap_noob_data *data, char ** jwk, const cha
     json_add_string(json, CURVE, cryptosuites_names[data->cryptosuitep]);
     json_value_sep(json);
     json_add_string(json, X_COORDINATE, x_b64);
+    if (data->ecdh_exchange_data->y_b64) {
+        json_value_sep(json);
+        json_add_string(json, Y_COORDINATE, data->ecdh_exchange_data->y_b64);
+    }
     json_end_object(json);
 
     *jwk = strndup(wpabuf_head(json), wpabuf_len(json));
@@ -781,11 +794,23 @@ static int eap_noob_get_key(struct eap_noob_data * data)
 {
     EVP_PKEY_CTX * pctx = NULL;
     EVP_PKEY_CTX * kctx = NULL;
-    EVP_PKEY *params = NULL;
+    //EVP_PKEY *params = NULL;
     BIO * mem_pub = BIO_new(BIO_s_mem());
     unsigned char * pub_key_char = NULL;
     size_t pub_key_len = 0;
     int ret = SUCCESS;
+
+    EC_POINT *point;
+    EC_GROUP *group;
+    EC_KEY *key;
+
+    // Store the coordinates of the generated public key
+    BIGNUM *x = BN_new();
+    size_t x_len;
+    unsigned char *x_val;
+    BIGNUM *y = BN_new();
+    size_t y_len;
+    unsigned char *y_val;
 
     // Depending on the negotiated cryptosuite, the server should use a
     // different test vector.
@@ -819,31 +844,35 @@ static int eap_noob_get_key(struct eap_noob_data * data)
         }
 
         EVP_PKEY_keygen_init(kctx);
+
+        /* Generate EC key pair */
+        EVP_PKEY_keygen(kctx, &data->ecdh_exchange_data->dh_key);
     } else {
+        /*
         if (NULL == (pctx = EVP_PKEY_CTX_new_id(EVP_PKEY_EC, NULL))) {
             wpa_printf(MSG_DEBUG, "EAP-NOOB: Fail to create context for parameter generation.");
             ret = FAILURE; goto EXIT;
         }
 
-        /* Initialise the parameter generation */
+        // Initialise the parameter generation
         if(1 != EVP_PKEY_paramgen_init(pctx)){
             wpa_printf(MSG_DEBUG, "EAP-NOOB: Fail to initialize parameter generation.");
             ret = FAILURE; goto EXIT;
         }
 
-        /* Set the EC curve to the one that is negotiated */
+        // Set the EC curve to the one that is negotiated
         if (1 != EVP_PKEY_CTX_set_ec_paramgen_curve_nid(pctx, cryptosuites_openssl[data->cryptosuitep])) {
             wpa_printf(MSG_DEBUG, "EAP-NOOB: Fail to set EC paramgen curve");
             ret = FAILURE; goto EXIT;
         }
 
-        /* Generate the EC curve params */
+        // Generate the EC curve params
         if (1 != EVP_PKEY_paramgen(pctx, &params)) {
             wpa_printf(MSG_DEBUG, "EAP-NOOB: Fail to generate params");
             ret = FAILURE; goto EXIT;
         }
 
-        /* Create the context for the key generation */
+        // Create the context for the key generation
         if (NULL == (kctx = EVP_PKEY_CTX_new(params, NULL))) {
             wpa_printf(MSG_DEBUG, "EAP-NOOB: Fail to create context for key generation");
             ret = FAILURE; goto EXIT;
@@ -853,10 +882,79 @@ static int eap_noob_get_key(struct eap_noob_data * data)
             wpa_printf(MSG_DEBUG, "EAP-NOOB: Fail to initialize key generation");
             ret = FAILURE; goto EXIT;
         }
-    }
+        */
 
-    /* Generate EC key pair */
-   EVP_PKEY_keygen(kctx, &data->ecdh_exchange_data->dh_key);
+        // Initialize a key object to use the negotiated curve
+        if (NULL == (key = EC_KEY_new_by_curve_name(
+                     cryptosuites_openssl[data->cryptosuitep]))) {
+            wpa_printf(MSG_DEBUG, "EAP-NOOB: Failed to initialize curve for EC key");
+            ret = FAILURE; goto EXIT;
+        }
+
+        // Generate a private and public key pair
+        if (1 != EC_KEY_generate_key(key)) {
+            wpa_printf(MSG_DEBUG, "EAP-NOOB: Failed to generate key");
+            ret = FAILURE; goto EXIT;
+        }
+
+        // Initialize dh_key as EVP_PKEY
+        if (NULL == (data->ecdh_exchange_data->dh_key = EVP_PKEY_new())) {
+            wpa_printf(MSG_DEBUG, "EAP-NOOB: Failed to initialize EVP_PKEY");
+            ret = FAILURE; goto EXIT;
+        }
+
+        // Store the key as an EVP_PKEY struct in eap-noob-data
+        if (EVP_PKEY_set1_EC_KEY(data->ecdh_exchange_data->dh_key, key) != 1) {
+            wpa_printf(MSG_DEBUG, "EAP-NOOB: Failed to transform EC_KEY to EVP_PKEY");
+            ret = FAILURE; goto EXIT;
+        }
+
+        // Retrieve the group that was used for the key
+        group = EC_KEY_get0_group(key);
+        if (!group) {
+            wpa_printf(MSG_DEBUG, "EAP-NOOB: Failed to get group");
+            ret = FAILURE; goto EXIT;
+        }
+
+        // Retrieve the point that resembles the public key
+        point = EC_KEY_get0_public_key(key);
+        if (!point) {
+            wpa_printf(MSG_DEBUG, "EAP-NOOB: Failed to get public key");
+            ret = FAILURE; goto EXIT;
+        }
+
+        if (EC_POINT_get_affine_coordinates(group, point, x, y, NULL) != 1) {
+            wpa_printf(MSG_DEBUG, "EAP-NOOB: Error in coordinates of public key");
+        }
+
+        // Allocate memory for x and y coordinates of the public key
+        x_len = BN_num_bytes(x);
+        x_val = os_zalloc(x_len);
+        y_len = BN_num_bytes(y);
+        y_val = os_zalloc(y_len);
+
+        // Convert the coordinates to binary
+        if (BN_bn2bin(x, x_val) == 0) {
+            wpa_printf(MSG_DEBUG, "EAP-NOOB: Error when converting x to binary");
+            ret = FAILURE; goto EXIT;
+        }
+        if (BN_bn2bin(y, y_val) == 0) {
+            wpa_printf(MSG_DEBUG, "EAP-NOOB: Error when converting y to binary");
+            ret = FAILURE; goto EXIT;
+        }
+
+        wpa_hexdump_ascii(MSG_DEBUG, "EAP-NOOB: x coordinate", x_val, 32);
+        wpa_hexdump_ascii(MSG_DEBUG, "EAP-NOOB: y coordinate", y_val, 32);
+
+        // Encode coordinates in base64 to store them and later use them
+        // when building a JWK object.
+        eap_noob_Base64Encode(x_val, x_len, &data->ecdh_exchange_data->x_b64);
+        eap_noob_Base64Encode(y_val, y_len, &data->ecdh_exchange_data->y_b64);
+
+        wpa_printf(MSG_DEBUG, "EAP-NOOB: Coordinates x,y: %s,%s",
+                   data->ecdh_exchange_data->x_b64,
+                   data->ecdh_exchange_data->y_b64);
+    }
 
 /*
     If you are using the RFC 7748 test vector, you do not need to generate a key pair. Instead you use the
@@ -865,12 +963,13 @@ static int eap_noob_get_key(struct eap_noob_data * data)
 */
     //d2i_PrivateKey_bio(mem1,&data->ecdh_exchange_data->dh_key);
 
+    /*
     // TODO: Segmentation fault occurs here when using test vector
     PEM_write_PrivateKey(stdout, data->ecdh_exchange_data->dh_key,
                          NULL, NULL, 0, NULL, NULL);
     PEM_write_PUBKEY(stdout, data->ecdh_exchange_data->dh_key);
 
-    /* Get public key */
+    // Get public key
     if (1 != i2d_PUBKEY_bio(mem_pub, data->ecdh_exchange_data->dh_key)) {
         wpa_printf(MSG_DEBUG, "EAP-NOOB: Fail to copy public key to bio.");
         ret = FAILURE; goto EXIT;
@@ -879,17 +978,26 @@ static int eap_noob_get_key(struct eap_noob_data * data)
     // TODO: Is MAX_X25519_LEN equal to max length for NIST P-256?
     pub_key_char = os_zalloc(MAX_X25519_LEN);
     pub_key_len = BIO_read(mem_pub, pub_key_char, MAX_X25519_LEN);
+     */
 
 /*
  * This code removes the openssl internal ASN encoding and only keeps the 32 bytes of curve25519
  * public key which is then encoded in the JWK format and sent to the other party. This code may
  * need to be updated when openssl changes its internal format for public-key encoded in PEM.
 */
+    /*
     unsigned char * pub_key_char_asn_removed = pub_key_char + (pub_key_len-32);
     pub_key_len = 32;
 
     EAP_NOOB_FREE(data->ecdh_exchange_data->x_b64);
     eap_noob_Base64Encode(pub_key_char_asn_removed, pub_key_len, &data->ecdh_exchange_data->x_b64);
+
+    key = EVP_PKEY_get1_EC_KEY(data->ecdh_exchange_data->dh_key);
+    if (!key) {
+        wpa_printf(MSG_DEBUG, "EAP-NOOB: No key returned from EVP");
+        ret = FAILURE; goto EXIT;
+    }
+     */
 
 EXIT:
     if (pctx)
