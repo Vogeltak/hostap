@@ -957,7 +957,7 @@ u8 * eap_noob_gen_MAC(const struct eap_noob_data * data, int type, u8 * key, int
 int eap_noob_derive_session_secret(struct eap_noob_data * data, size_t * secret_len)
 {
     EVP_PKEY_CTX * ctx = NULL;
-    EVP_PKEY * remote_key = NULL;
+    EVP_PKEY * remote_key = EVP_PKEY_new();
     unsigned char * remote_pub_key = NULL;
     size_t skeylen = 0, len = 0;
     int ret = SUCCESS;
@@ -976,7 +976,70 @@ int eap_noob_derive_session_secret(struct eap_noob_data * data, size_t * secret_
     }
 
     // TODO: Differentiate based on negotiated cryptosuitep
-    remote_key = EVP_PKEY_new_raw_public_key(EVP_PKEY_X25519, NULL, remote_pub_key, len);
+    if (cryptosuites_openssl[data->cryptosuitep] == NID_X25519) {
+        remote_key = EVP_PKEY_new_raw_public_key(EVP_PKEY_X25519, NULL, remote_pub_key, len);
+    } else {
+        EC_GROUP *g = EC_GROUP_new_by_curve_name(cryptosuites_openssl[data->cryptosuitep]);
+        //EC_POINT *p = NULL;
+        EC_KEY *k = EC_KEY_new();
+
+        unsigned char * y_coord = NULL;
+        size_t y_len = 0;
+
+        // If dealing with a curve other than X25519, the public key
+        // consists of two coordinates x and y.
+        y_len = eap_noob_Base64Decode(data->ecdh_exchange_data->y_b64_remote, &y_coord);
+        if (y_len == 0) {
+            wpa_printf(MSG_DEBUG, "EAP-NOOB: Failed to decode y coordinate");
+            ret = FAILURE; goto EXIT;
+        }
+
+        if (EC_KEY_set_group(k, g) <= 0 ) {
+            wpa_printf(MSG_DEBUG, "EAP-NOOB: Failed to set group");
+            ret = FAILURE; goto EXIT;
+        }
+
+        BIGNUM * x_bn = BN_new();
+        BIGNUM * y_bn = BN_new();
+
+        wpa_hexdump_ascii(MSG_DEBUG, "x coordinate", remote_pub_key, len);
+        wpa_hexdump_ascii(MSG_DEBUG, "y coordinate", y_coord, y_len);
+
+        // Convert the coordinates of the public key of the remote party to
+        // BIGNUM types such that they can be used to initialize the EC_KEY object.
+        if (BN_bin2bn(remote_pub_key, len, x_bn) == 0) {
+            wpa_printf(MSG_DEBUG, "EAP-NOOB: Failed to convert x coordinate to BIGNUM");
+            ret = FAILURE; goto EXIT;
+        }
+        if (BN_bin2bn(y_coord, y_len, y_bn) == 0) {
+            wpa_printf(MSG_DEBUG, "EAP-NOOB: Failed to convert y coordinate to BIGNUM");
+            ret = FAILURE; goto EXIT;
+        }
+
+        // Create EC_KEY object for the public key of the remote party
+        if (EC_KEY_set_public_key_affine_coordinates(k, x_bn, y_bn) <= 0) {
+            wpa_printf(MSG_DEBUG, "EAP-NOOB: Failed set public key of remote party");
+            ret = FAILURE; goto EXIT;
+        }
+
+        /*
+        if (EC_POINT_oct2point(g, p, remote_pub_key, len, NULL) <= 0) {
+            wpa_printf(MSG_DEBUG, "EAP-NOOB: Failed to create point");
+            ret = FAILURE; goto EXIT;
+        }
+
+        if ((EC_KEY_set_public_key(k, p)) <= 0) {
+            wpa_printf(MSG_DEBUG, "EAP-NOOB: Failed to set key");
+            ret = FAILURE; goto EXIT;
+        }
+        */
+
+        if (EVP_PKEY_set1_EC_KEY(remote_key, k) <= 0) {
+            wpa_printf(MSG_DEBUG, "EAP-NOOB: Failed to transform EC_KEY to EVP_PKEY");
+            ret = FAILURE; goto EXIT;
+        }
+    }
+
     if(remote_key == NULL) {
         wpa_printf(MSG_DEBUG, "EAP-NOOB: Failed to initialize public key of remote party");
         ret = FAILURE; goto EXIT;
