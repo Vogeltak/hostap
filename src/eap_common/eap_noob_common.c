@@ -970,6 +970,10 @@ int eap_noob_get_key(struct eap_noob_data * data, bool is_peer)
     size_t pub_key_len = 0;
     int ret = SUCCESS;
 
+    unsigned char * private_key_bin = NULL;
+    BIGNUM *private_key = BN_new();
+    EC_POINT *public_key;
+
     const EC_POINT *point;
     const EC_GROUP *group;
     EC_KEY *key;
@@ -1061,10 +1065,56 @@ int eap_noob_get_key(struct eap_noob_data * data, bool is_peer)
             ret = FAILURE; goto EXIT;
         }
 
-        // Generate a private and public key pair
-        if (1 != EC_KEY_generate_key(key)) {
-            wpa_printf(MSG_DEBUG, "EAP-NOOB: Failed to generate key");
+        // Retrieve the group that was used for the key
+        group = EC_KEY_get0_group(key);
+        if (!group) {
+            wpa_printf(MSG_DEBUG, "EAP-NOOB: Failed to get group");
             ret = FAILURE; goto EXIT;
+        }
+
+        if (enable_test_vectors) {
+            // Decode the base64 test vector to binary
+            size_t len = eap_noob_Base64Decode(test_vectors[data->cryptosuitep], &private_key_bin);
+            if (!len) {
+                wpa_printf(MSG_DEBUG, "EAP-NOOB: Failed to decode private key");
+                ret = FAILURE; goto EXIT;
+            }
+            // Convert the test vector private key into a BIGNUM for use with OpenSSL
+            if (BN_bin2bn(private_key_bin, len, private_key) == 0) {
+                wpa_printf(MSG_DEBUG, "EAP-NOOB: Failed to convert test vector to BIGNUM");
+                ret = FAILURE; goto EXIT;
+            }
+            // Set the private key in the EC_KEY object
+            if (EC_KEY_set_private_key(key, private_key) != 1) {
+                wpa_printf(MSG_DEBUG, "EAP-NOOB: Failed to set private key");
+                ret = FAILURE; goto EXIT;
+            }
+
+            public_key = EC_POINT_new(group);
+
+            // BN_CTX is used to hold temporary values while doing BN calculations
+            BN_CTX *ctx;
+            ctx = BN_CTX_new();
+
+            // Calculate the public key
+            if (EC_POINT_mul(group, public_key, private_key, NULL, NULL, ctx) != 1) {
+                wpa_printf(MSG_DEBUG, "EAP-NOOB: Failed to calculate public key");
+                ret = FAILURE; goto EXIT;
+            }
+
+            BN_CTX_free(ctx);
+
+            // Set the public key in the EC_KEY object
+            if (EC_KEY_set_public_key(key, public_key) != 1) {
+                wpa_printf(MSG_DEBUG, "EAP-NOOB: Failed to set public key");
+                ret = FAILURE; goto EXIT;
+            }
+        } else {
+            // Generate a private and public key pair
+            if (1 != EC_KEY_generate_key(key)) {
+                wpa_printf(MSG_DEBUG, "EAP-NOOB: Failed to generate key");
+                ret = FAILURE; goto EXIT;
+            }
         }
 
         // Initialize dh_key as EVP_PKEY
@@ -1076,13 +1126,6 @@ int eap_noob_get_key(struct eap_noob_data * data, bool is_peer)
         // Store the key as an EVP_PKEY struct in eap-noob-data
         if (EVP_PKEY_set1_EC_KEY(data->ecdh_exchange_data->dh_key, key) != 1) {
             wpa_printf(MSG_DEBUG, "EAP-NOOB: Failed to transform EC_KEY to EVP_PKEY");
-            ret = FAILURE; goto EXIT;
-        }
-
-        // Retrieve the group that was used for the key
-        group = EC_KEY_get0_group(key);
-        if (!group) {
-            wpa_printf(MSG_DEBUG, "EAP-NOOB: Failed to get group");
             ret = FAILURE; goto EXIT;
         }
 
