@@ -831,7 +831,8 @@ int wpas_dpp_auth_init(struct wpa_supplicant *wpa_s, const char *cmd)
 
 #ifdef CONFIG_DPP2
 	if (tcp)
-		return dpp_tcp_init(wpa_s->dpp, auth, &ipaddr, tcp_port);
+		return dpp_tcp_init(wpa_s->dpp, auth, &ipaddr, tcp_port,
+				    wpa_s->conf->dpp_name);
 #endif /* CONFIG_DPP2 */
 
 	wpa_s->dpp_auth = auth;
@@ -1238,8 +1239,6 @@ static struct wpa_ssid * wpas_dpp_add_network(struct wpa_supplicant *wpa_s,
 		}
 
 		if (conf->certs) {
-			wpa_hexdump_buf(MSG_INFO, "JKM:certs",
-					conf->certs);
 			for (i = 0; ; i++) {
 				os_snprintf(name, sizeof(name), "dpp-certs-%d",
 					    i);
@@ -1282,8 +1281,6 @@ static struct wpa_ssid * wpas_dpp_add_network(struct wpa_supplicant *wpa_s,
 					break;
 			}
 
-			wpa_hexdump_buf(MSG_INFO, "JKM:privkey",
-					auth->priv_key);
 			blob = os_zalloc(sizeof(*blob));
 			if (!blob)
 				goto fail;
@@ -1515,10 +1512,12 @@ static void wpas_dpp_build_csr(void *eloop_ctx, void *timeout_ctx)
 	wpa_printf(MSG_DEBUG, "DPP: Build CSR");
 	wpabuf_free(auth->csr);
 	/* TODO: Additional information needed for CSR based on csrAttrs */
-	auth->csr = dpp_build_csr(auth);
+	auth->csr = dpp_build_csr(auth, wpa_s->conf->dpp_name ?
+				  wpa_s->conf->dpp_name : "Test");
 	if (!auth->csr) {
 		dpp_auth_deinit(wpa_s->dpp_auth);
 		wpa_s->dpp_auth = NULL;
+		return;
 	}
 
 	wpas_dpp_start_gas_client(wpa_s);
@@ -1626,6 +1625,8 @@ fail:
 		wpabuf_free(msg);
 
 		/* This exchange will be terminated in the TX status handler */
+		if (wpa_s->conf->dpp_config_processing < 2)
+			auth->remove_on_tx_status = 1;
 		return;
 	}
 fail2:
@@ -2102,17 +2103,29 @@ wpas_dpp_rx_reconfig_auth_req(struct wpa_supplicant *wpa_s, const u8 *src,
 	wpa_printf(MSG_DEBUG, "DPP: Reconfig Authentication Request from "
 		   MACSTR, MAC2STR(src));
 
-	if (!wpa_s->dpp || wpa_s->dpp_auth ||
-	    !wpa_s->dpp_reconfig_announcement || !wpa_s->dpp_reconfig_ssid)
+	if (!wpa_s->dpp)
 		return;
+	if (wpa_s->dpp_auth) {
+		wpa_printf(MSG_DEBUG,
+			   "DPP: Not ready for reconfiguration - pending authentication exchange in progress");
+		return;
+	}
+	if (!wpa_s->dpp_reconfig_announcement || !wpa_s->dpp_reconfig_ssid) {
+		wpa_printf(MSG_DEBUG,
+			   "DPP: Not ready for reconfiguration - not requested");
+		return;
+	}
 	for (ssid = wpa_s->conf->ssid; ssid; ssid = ssid->next) {
 		if (ssid == wpa_s->dpp_reconfig_ssid &&
 		    ssid->id == wpa_s->dpp_reconfig_ssid_id)
 			break;
 	}
 	if (!ssid || !ssid->dpp_connector || !ssid->dpp_netaccesskey ||
-	    !ssid->dpp_csign)
+	    !ssid->dpp_csign) {
+		wpa_printf(MSG_DEBUG,
+			   "DPP: Not ready for reconfiguration - no matching network profile with Connector found");
 		return;
+	}
 
 	auth = dpp_reconfig_auth_req_rx(wpa_s->dpp, wpa_s, ssid->dpp_connector,
 					ssid->dpp_netaccesskey,
@@ -3261,7 +3274,6 @@ void wpas_dpp_deinit(struct wpa_supplicant *wpa_s)
 #endif /* CONFIG_TESTING_OPTIONS */
 	if (!wpa_s->dpp)
 		return;
-	dpp_global_clear(wpa_s->dpp);
 	eloop_cancel_timeout(wpas_dpp_pkex_retry_timeout, wpa_s, NULL);
 	eloop_cancel_timeout(wpas_dpp_reply_wait_timeout, wpa_s, NULL);
 	eloop_cancel_timeout(wpas_dpp_init_timeout, wpa_s, NULL);
@@ -3285,6 +3297,7 @@ void wpas_dpp_deinit(struct wpa_supplicant *wpa_s)
 	os_memset(wpa_s->dpp_intro_bssid, 0, ETH_ALEN);
 	os_free(wpa_s->dpp_configurator_params);
 	wpa_s->dpp_configurator_params = NULL;
+	dpp_global_clear(wpa_s->dpp);
 }
 
 
@@ -3609,6 +3622,12 @@ int wpas_dpp_reconfig(struct wpa_supplicant *wpa_s, struct wpa_ssid *ssid)
 	    !ssid->dpp_csign)
 		return -1;
 
+	if (wpa_s->dpp_auth) {
+		wpa_printf(MSG_DEBUG,
+			   "DPP: Not ready to start reconfiguration - pending authentication exchange in progress");
+		return -1;
+	}
+
 	wpas_dpp_chirp_stop(wpa_s);
 	wpa_s->dpp_allowed_roles = DPP_CAPAB_ENROLLEE;
 	wpa_s->dpp_qr_mutual = 0;
@@ -3628,14 +3647,53 @@ int wpas_dpp_reconfig(struct wpa_supplicant *wpa_s, struct wpa_ssid *ssid)
 }
 
 
+static int wpas_dpp_build_conf_resp(struct wpa_supplicant *wpa_s,
+				    struct dpp_authentication *auth, bool tcp)
+{
+	struct wpabuf *resp;
+
+	resp = dpp_build_conf_resp(auth, auth->e_nonce, auth->curve->nonce_len,
+				   auth->e_netrole, true);
+	if (!resp)
+		return -1;
+
+	if (tcp) {
+		auth->conf_resp_tcp = resp;
+		return 0;
+	}
+
+	if (gas_server_set_resp(wpa_s->gas_server, auth->cert_resp_ctx,
+				resp) < 0) {
+		wpa_printf(MSG_DEBUG,
+			   "DPP: Could not find pending GAS response");
+		wpabuf_free(resp);
+		return -1;
+	}
+	auth->conf_resp = resp;
+	return 0;
+}
+
+
 int wpas_dpp_ca_set(struct wpa_supplicant *wpa_s, const char *cmd)
 {
-	int peer;
+	int peer = -1;
 	const char *pos, *value;
 	struct dpp_authentication *auth = wpa_s->dpp_auth;
 	u8 *bin;
 	size_t bin_len;
 	struct wpabuf *buf;
+	bool tcp = false;
+
+	pos = os_strstr(cmd, " peer=");
+	if (pos) {
+		peer = atoi(pos + 6);
+		if (!auth || !auth->waiting_cert ||
+		    (auth->peer_bi &&
+		     (unsigned int) peer != auth->peer_bi->id)) {
+			auth = dpp_controller_get_auth(wpa_s->dpp, peer);
+			tcp = true;
+		}
+	}
 
 	if (!auth || !auth->waiting_cert) {
 		wpa_printf(MSG_DEBUG,
@@ -3643,14 +3701,13 @@ int wpas_dpp_ca_set(struct wpa_supplicant *wpa_s, const char *cmd)
 		return -1;
 	}
 
-	pos = os_strstr(cmd, " peer=");
-	if (pos) {
-		peer = atoi(pos + 6);
-		if (!auth->peer_bi ||
-		    (unsigned int) peer != auth->peer_bi->id) {
-			wpa_printf(MSG_DEBUG, "DPP: Peer mismatch");
-			return -1;
-		}
+	if (peer >= 0 &&
+	    (!auth->peer_bi ||
+	     (unsigned int) peer != auth->peer_bi->id) &&
+	    (!auth->tmp_peer_bi ||
+	     (unsigned int) peer != auth->tmp_peer_bi->id)) {
+		wpa_printf(MSG_DEBUG, "DPP: Peer mismatch");
+		return -1;
 	}
 
 	pos = os_strstr(cmd, " value=");
@@ -3662,6 +3719,11 @@ int wpas_dpp_ca_set(struct wpa_supplicant *wpa_s, const char *cmd)
 	if (!pos)
 		return -1;
 	pos += 6;
+
+	if (os_strncmp(pos, "status ", 7) == 0) {
+		auth->force_conf_resp_status = atoi(value);
+		return wpas_dpp_build_conf_resp(wpa_s, auth, tcp);
+	}
 
 	if (os_strncmp(pos, "trustedEapServerName ", 21) == 0) {
 		os_free(auth->trusted_eap_server_name);
@@ -3682,25 +3744,9 @@ int wpas_dpp_ca_set(struct wpa_supplicant *wpa_s, const char *cmd)
 	}
 
 	if (os_strncmp(pos, "certBag ", 8) == 0) {
-		struct wpabuf *resp;
-
 		wpabuf_free(auth->certbag);
 		auth->certbag = buf;
-
-		resp = dpp_build_conf_resp(auth, auth->e_nonce,
-					   auth->curve->nonce_len,
-					   auth->e_netrole, true);
-		if (!resp)
-			return -1;
-		if (gas_server_set_resp(wpa_s->gas_server, auth->cert_resp_ctx,
-					resp) < 0) {
-			wpa_printf(MSG_DEBUG,
-				   "DPP: Could not find pending GAS response");
-			wpabuf_free(resp);
-			return -1;
-		}
-		auth->conf_resp = resp;
-		return 0;
+		return wpas_dpp_build_conf_resp(wpa_s, auth, tcp);
 	}
 
 	wpabuf_free(buf);

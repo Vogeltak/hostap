@@ -120,6 +120,7 @@ enum dpp_connector_key {
 #define DPP_MAX_NONCE_LEN 32
 #define DPP_MAX_HASH_LEN 64
 #define DPP_MAX_SHARED_SECRET_LEN 66
+#define DPP_CP_LEN 64
 
 struct dpp_curve_params {
 	const char *name;
@@ -243,12 +244,14 @@ struct dpp_authentication {
 	struct dpp_bootstrap_info *peer_bi;
 	struct dpp_bootstrap_info *own_bi;
 	struct dpp_bootstrap_info *tmp_own_bi;
+	struct dpp_bootstrap_info *tmp_peer_bi;
 	u8 waiting_pubkey_hash[SHA256_MAC_LEN];
 	int response_pending;
 	int reconfig;
 	enum dpp_connector_key reconfig_connector_key;
 	enum dpp_status_error auth_resp_status;
 	enum dpp_status_error conf_resp_status;
+	enum dpp_status_error force_conf_resp_status;
 	u8 peer_mac_addr[ETH_ALEN];
 	u8 i_nonce[DPP_MAX_NONCE_LEN];
 	u8 r_nonce[DPP_MAX_NONCE_LEN];
@@ -296,6 +299,7 @@ struct dpp_authentication {
 	bool reconfig_success;
 	struct wpabuf *conf_req;
 	const struct wpabuf *conf_resp; /* owned by GAS server */
+	struct wpabuf *conf_resp_tcp;
 	struct dpp_configuration *conf_ap;
 	struct dpp_configuration *conf2_ap;
 	struct dpp_configuration *conf_sta;
@@ -614,8 +618,10 @@ struct dpp_pfs * dpp_pfs_init(const u8 *net_access_key,
 int dpp_pfs_process(struct dpp_pfs *pfs, const u8 *peer_ie, size_t peer_ie_len);
 void dpp_pfs_free(struct dpp_pfs *pfs);
 
-struct wpabuf * dpp_build_csr(struct dpp_authentication *auth);
+struct wpabuf * dpp_build_csr(struct dpp_authentication *auth,
+			      const char *name);
 struct wpabuf * dpp_pkcs7_certs(const struct wpabuf *pkcs7);
+int dpp_validate_csr(struct dpp_authentication *auth, const struct wpabuf *csr);
 
 struct dpp_bootstrap_info * dpp_add_qr_code(struct dpp_global *dpp,
 					    const char *uri);
@@ -656,8 +662,11 @@ int dpp_relay_rx_gas_req(struct dpp_global *dpp, const u8 *src, const u8 *data,
 int dpp_controller_start(struct dpp_global *dpp,
 			 struct dpp_controller_config *config);
 void dpp_controller_stop(struct dpp_global *dpp);
+struct dpp_authentication * dpp_controller_get_auth(struct dpp_global *dpp,
+						    unsigned int id);
 int dpp_tcp_init(struct dpp_global *dpp, struct dpp_authentication *auth,
-		 const struct hostapd_ip_addr *addr, int port);
+		 const struct hostapd_ip_addr *addr, int port,
+		 const char *name);
 struct wpabuf * dpp_build_presence_announcement(struct dpp_bootstrap_info *bi);
 
 struct dpp_global_config {

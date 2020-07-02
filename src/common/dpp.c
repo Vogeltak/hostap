@@ -1293,9 +1293,14 @@ void dpp_auth_deinit(struct dpp_authentication *auth)
 	wpabuf_free(auth->cacert);
 	wpabuf_free(auth->certbag);
 	os_free(auth->trusted_eap_server_name);
+	wpabuf_free(auth->conf_resp_tcp);
 #endif /* CONFIG_DPP2 */
 	wpabuf_free(auth->net_access_key);
 	dpp_bootstrap_info_free(auth->tmp_own_bi);
+	if (auth->tmp_peer_bi) {
+		dl_list_del(&auth->tmp_peer_bi->list);
+		dpp_bootstrap_info_free(auth->tmp_peer_bi);
+	}
 #ifdef CONFIG_TESTING_OPTIONS
 	os_free(auth->config_obj_override);
 	os_free(auth->discovery_override);
@@ -1694,6 +1699,11 @@ dpp_build_conf_resp(struct dpp_authentication *auth, const u8 *e_nonce,
 	size_t len[1];
 	enum dpp_status_error status;
 
+	if (auth->force_conf_resp_status != DPP_STATUS_OK) {
+		status = auth->force_conf_resp_status;
+		goto forced_status;
+	}
+
 	if (netrole == DPP_NETROLE_CONFIGURATOR) {
 #ifdef CONFIG_DPP2
 		env_data = dpp_build_enveloped_data(auth);
@@ -1715,6 +1725,7 @@ dpp_build_conf_resp(struct dpp_authentication *auth, const u8 *e_nonce,
 		status = DPP_STATUS_CSR_NEEDED;
 	else
 		status = DPP_STATUS_CONFIGURE_FAILURE;
+forced_status:
 	auth->conf_resp_status = status;
 
 	/* { E-nonce, configurationObject[, sendConnStatus]}ke */
@@ -2038,19 +2049,45 @@ dpp_conf_req_rx(struct dpp_authentication *auth, const u8 *attr_start,
 	cert_req = json_get_member_base64(root, "pkcs10");
 	if (cert_req) {
 		char *txt;
+		int id;
 
 		wpa_hexdump_buf(MSG_DEBUG, "DPP: CertificateRequest", cert_req);
+		if (dpp_validate_csr(auth, cert_req) < 0) {
+			wpa_printf(MSG_DEBUG, "DPP: CSR is not valid");
+			auth->force_conf_resp_status = DPP_STATUS_CSR_BAD;
+			goto cont;
+		}
+
+		if (auth->peer_bi) {
+			id = auth->peer_bi->id;
+		} else if (auth->tmp_peer_bi) {
+			id = auth->tmp_peer_bi->id;
+		} else {
+			struct dpp_bootstrap_info *bi;
+
+			bi = os_zalloc(sizeof(*bi));
+			if (!bi)
+				goto fail;
+			bi->id = dpp_next_id(auth->global);
+			dl_list_add(&auth->global->bootstrap, &bi->list);
+			auth->tmp_peer_bi = bi;
+			id = bi->id;
+		}
+
+		wpa_printf(MSG_DEBUG, "DPP: CSR is valid - forward to CA/RA");
 		txt = base64_encode_no_lf(wpabuf_head(cert_req),
 					  wpabuf_len(cert_req), NULL);
 		if (!txt)
 			goto fail;
+
 		wpa_msg(auth->msg_ctx, MSG_INFO, DPP_EVENT_CSR "peer=%d csr=%s",
-			auth->peer_bi ? (int) auth->peer_bi->id : -1, txt);
+			id, txt);
 		os_free(txt);
 		auth->waiting_csr = false;
 		auth->waiting_cert = true;
 		goto fail;
 	}
+cont:
 #endif /* CONFIG_DPP2 */
 
 	resp = dpp_build_conf_resp(auth, e_nonce, e_nonce_len, netrole,
@@ -2525,7 +2562,7 @@ static int dpp_parse_cred_dot1x(struct dpp_authentication *auth,
 			      "Invalid trustedEapServerName type in JSON");
 		return -1;
 	}
-	if (name->string) {
+	if (name && name->string) {
 		wpa_printf(MSG_DEBUG, "DPP: Received trustedEapServerName: %s",
 			   name->string);
 		conf->server_name = os_strdup(name->string);
