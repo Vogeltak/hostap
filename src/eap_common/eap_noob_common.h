@@ -20,7 +20,7 @@
 
 /* Maximum values for fields */
 #define MAX_SUP_VER             3
-#define MAX_SUP_CSUITES         10
+#define MAX_SUP_CSUITES         2
 #define MAX_CONF_LEN            500
 #define MAX_INFO_LEN            500
 #define MAX_PEER_ID_LEN         22
@@ -285,6 +285,9 @@ extern const char *error_info[];
 extern const int state_machine[][5];
 extern const int next_request_type[];
 extern const int state_message_check[NUM_OF_STATES][NUM_MSG_TYPES];
+// Cryptosuite IDs start counting from 1
+extern const int cryptosuites_openssl[MAX_SUP_CSUITES + 1];
+extern const char *cryptosuites_names[MAX_SUP_CSUITES + 1];
 
 #define EAP_NOOB_STATE_VALID                                                              \
     (state_machine[data->server_state][data->peer_state] == VALID)   \
@@ -308,7 +311,8 @@ int eap_noob_gen_KDF(struct eap_noob_data * data, int state, bool use_prev_Kz);
 char * eap_noob_build_mac_input(const struct eap_noob_data * data,
                                        int first_param, int state);
 u8 * eap_noob_gen_MAC(const struct eap_noob_data * data, int type, u8 * key, int keylen, int state);
-int eap_noob_derive_secret(struct eap_noob_data * data, size_t * secret_len);
+int eap_noob_get_key(struct eap_noob_data * data, bool is_peer);
+int eap_noob_derive_session_secret(struct eap_noob_data * data, size_t * secret_len);
 int eap_noob_db_statements(sqlite3 * db, const char * query);
 int eap_noob_exec_query(struct eap_noob_data * data, const char * query,
                                void (*callback)(struct eap_noob_data *, sqlite3_stmt *),

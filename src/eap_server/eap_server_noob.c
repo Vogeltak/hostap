@@ -410,8 +410,30 @@ static void eap_noob_assign_config(char * conf_name, char * conf_value, struct e
         wpa_printf(MSG_DEBUG, "EAP-NOOB: FILE  READ= %d", data->versions[0]);
     }
     else if (0 == strcmp("Csuite",conf_name)) {
-        data->cryptosuites[0] = (int) strtol(conf_value, NULL, 10); data->config_params |= CRYPTOSUITE_RCVD;
-        wpa_printf(MSG_DEBUG, "EAP-NOOB: FILE  READ= %d", data->cryptosuites[0]);
+        int len = MAX_SUP_CSUITES * 2;
+
+        // Input to strtok may not be a string literal, therefore the conf_value
+        // is copied to a character array.
+        char tmp[len];
+        strcpy(tmp, conf_value);
+
+        // Ensure that the last element is a null terminator for valid string.
+        tmp[len - 1] = '\0';
+
+        const char *delim = ",";
+        char *tok = strtok(tmp, delim);
+        int i = 0;
+
+        while (tok != NULL) {
+            data->cryptosuites[i] = (int) strtol(tok, NULL, 10);
+            wpa_printf(MSG_DEBUG, "EAP-NOOB: Server supports cryptosuite %d", data->cryptosuites[i]);
+            tok = strtok(NULL, delim);
+            i++;
+        }
+
+        data->config_params |= CRYPTOSUITE_RCVD;
+
+        wpa_printf(MSG_DEBUG, "EAP-NOOB: FILE  READ = %d cryptosuites", i);
     }
     else if (0 == strcmp("OobDirs",conf_name)) {
         data->dirs = (int) strtol(conf_value, NULL, 10); data->config_params |= DIR_RCVD;
@@ -602,7 +624,7 @@ static char * eap_noob_prepare_server_info_string(struct eap_noob_server_config_
  *  @x_64 : x co-ordinate in base64url format
  *  Returns : FAILURE/SUCCESS
 **/
-static int eap_noob_build_JWK(char ** jwk, const char * x_b64)
+static int eap_noob_build_JWK(struct eap_noob_data *data, char ** jwk, const char * x_b64)
 {
     struct wpabuf * json;
     size_t len = 500;
@@ -621,9 +643,13 @@ static int eap_noob_build_JWK(char ** jwk, const char * x_b64)
     json_start_object(json, NULL);
     json_add_string(json, KEY_TYPE, "EC");
     json_value_sep(json);
-    json_add_string(json, CURVE, "P-256");
+    json_add_string(json, CURVE, cryptosuites_names[data->cryptosuitep]);
     json_value_sep(json);
     json_add_string(json, X_COORDINATE, x_b64);
+    if (data->ecdh_exchange_data->y_b64) {
+        json_value_sep(json);
+        json_add_string(json, Y_COORDINATE, data->ecdh_exchange_data->y_b64);
+    }
     json_end_object(json);
 
     *jwk = strndup(wpabuf_head(json), wpabuf_len(json));
@@ -762,156 +788,6 @@ static void eap_noob_get_sid(struct eap_sm * sm, struct eap_noob_data * data)
     EAP_NOOB_FREE(sm->rad_attr->nasId);
     EAP_NOOB_FREE(sm->rad_attr);
     EAP_NOOB_FREE(query);
-}
-
-static int eap_noob_derive_session_secret(struct eap_noob_data * data, size_t * secret_len)
-{
-    EVP_PKEY_CTX * ctx = NULL;
-    EVP_PKEY * peerkey = NULL;
-    unsigned char * peer_pub_key = NULL;
-    size_t skeylen = 0, len = 0;
-    int ret = SUCCESS;
-
-    wpa_printf(MSG_DEBUG, "EAP-NOOB: Entering function %s", __func__);
-    if (NULL == data || NULL == secret_len) {
-        wpa_printf(MSG_DEBUG, "EAP-NOOB: server data is NULL");
-        return FAILURE;
-    }
-
-    EAP_NOOB_FREE(data->ecdh_exchange_data->shared_key);
-    len = eap_noob_Base64Decode(data->ecdh_exchange_data->x_b64_remote, &peer_pub_key);
-    if (len == 0) {
-        wpa_printf(MSG_DEBUG, "EAP-NOOB: Failed to decode public key of peer");
-        ret = FAILURE; goto EXIT;
-    }
-
-    peerkey = EVP_PKEY_new_raw_public_key(EVP_PKEY_X25519, NULL, peer_pub_key, len);
-    if(peerkey == NULL) {
-        wpa_printf(MSG_DEBUG, "EAP-NOOB: Failed to initialize public key of peer");
-        ret = FAILURE; goto EXIT;
-    }
-
-    ctx = EVP_PKEY_CTX_new(data->ecdh_exchange_data->dh_key, NULL);
-    if (!ctx) {
-        wpa_printf(MSG_DEBUG, "EAP-NOOB: Failed to create context");
-        ret = FAILURE; goto EXIT;
-    }
-
-    if (EVP_PKEY_derive_init(ctx) <= 0) {
-        wpa_printf(MSG_DEBUG, "EAP-NOOB: Failed to init key derivation");
-        ret = FAILURE; goto EXIT;
-    }
-
-    if (EVP_PKEY_derive_set_peer(ctx, peerkey) <= 0) {
-        wpa_printf(MSG_DEBUG, "EAP-NOOB: Failed to set peer key");
-        ret = FAILURE; goto EXIT;
-    }
-
-    if (EVP_PKEY_derive(ctx, NULL, &skeylen) <= 0) {
-        wpa_printf(MSG_DEBUG, "EAP-NOOB: Failed to get secret key len");
-        ret = FAILURE; goto EXIT;
-    }
-
-    data->ecdh_exchange_data->shared_key  = OPENSSL_malloc(skeylen);
-
-    if (!data->ecdh_exchange_data->shared_key) {
-        wpa_printf(MSG_DEBUG, "EAP-NOOB: Failed to allocate memory for secret");
-        ret = FAILURE; goto EXIT;
-    }
-
-    if (EVP_PKEY_derive(ctx, data->ecdh_exchange_data->shared_key, &skeylen) <= 0) {
-        wpa_printf(MSG_DEBUG, "EAP-NOOB: Failed to derive secret key");
-        ret = FAILURE; goto EXIT;
-    }
-
-    (*secret_len) = skeylen;
-
-    wpa_hexdump_ascii(MSG_DEBUG,"EAP-NOOB: Secret Derived",
-            data->ecdh_exchange_data->shared_key, *secret_len);
-
-EXIT:
-    if (ctx)
-        EVP_PKEY_CTX_free(ctx);
-
-    EAP_NOOB_FREE(peer_pub_key);
-
-    if (ret != SUCCESS)
-        EAP_NOOB_FREE(data->ecdh_exchange_data->shared_key);
-
-    return ret;
-}
-static int eap_noob_get_key(struct eap_noob_data * data)
-{
-    EVP_PKEY_CTX * pctx = NULL;
-    BIO * mem_pub = BIO_new(BIO_s_mem());
-    unsigned char * pub_key_char = NULL;
-    size_t pub_key_len = 0;
-    int ret = SUCCESS;
-
-/*
-    Uncomment the next 6 lines of code for using the test vectors of Curve25519 in RFC 7748.
-    Peer = Bob
-    Server = Alice
-*/
-
-
-    char * priv_key_test_vector = "MC4CAQAwBQYDK2VuBCIEIHcHbQpzGKV9PBbBclGyZkXfTC+H68CZKrF3+6UduSwq";
-    BIO* b641 = BIO_new(BIO_f_base64());
-    BIO* mem1 = BIO_new(BIO_s_mem());
-    BIO_set_flags(b641,BIO_FLAGS_BASE64_NO_NL);
-    BIO_puts(mem1,priv_key_test_vector);
-    mem1 = BIO_push(b641,mem1);
-
-    wpa_printf(MSG_DEBUG, "EAP-NOOB: entering %s", __func__);
-
-    /* Initialize context to generate keys - Curve25519 */
-    if (NULL == (pctx = EVP_PKEY_CTX_new_id(NID_X25519, NULL))) {
-        wpa_printf(MSG_DEBUG, "EAP-NOOB: Fail to create context for parameter generation.");
-        ret = FAILURE; goto EXIT;
-    }
-
-    EVP_PKEY_keygen_init(pctx);
-
-    /* Generate X25519 key pair */
-   //EVP_PKEY_keygen(pctx, &data->ecdh_exchange_data->dh_key);
-
-/*
-    If you are using the RFC 7748 test vector, you do not need to generate a key pair. Instead you use the
-    private key from the RFC. For using the test vector, comment out the line above and
-    uncomment the following line code
-*/
-    d2i_PrivateKey_bio(mem1,&data->ecdh_exchange_data->dh_key);
-
-    PEM_write_PrivateKey(stdout, data->ecdh_exchange_data->dh_key,
-                         NULL, NULL, 0, NULL, NULL);
-    PEM_write_PUBKEY(stdout, data->ecdh_exchange_data->dh_key);
-
-    /* Get public key */
-    if (1 != i2d_PUBKEY_bio(mem_pub, data->ecdh_exchange_data->dh_key)) {
-        wpa_printf(MSG_DEBUG, "EAP-NOOB: Fail to copy public key to bio.");
-        ret = FAILURE; goto EXIT;
-    }
-
-    pub_key_char = os_zalloc(MAX_X25519_LEN);
-    pub_key_len = BIO_read(mem_pub, pub_key_char, MAX_X25519_LEN);
-
-/*
- * This code removes the openssl internal ASN encoding and only keeps the 32 bytes of curve25519
- * public key which is then encoded in the JWK format and sent to the other party. This code may
- * need to be updated when openssl changes its internal format for public-key encoded in PEM.
-*/
-    unsigned char * pub_key_char_asn_removed = pub_key_char + (pub_key_len-32);
-    pub_key_len = 32;
-
-    EAP_NOOB_FREE(data->ecdh_exchange_data->x_b64);
-    eap_noob_Base64Encode(pub_key_char_asn_removed, pub_key_len, &data->ecdh_exchange_data->x_b64);
-
-EXIT:
-    if (pctx)
-        EVP_PKEY_CTX_free(pctx);
-    EAP_NOOB_FREE(pub_key_char);
-    BIO_free_all(mem_pub);
-    return ret;
 }
 
 static int eap_noob_get_sleeptime(struct eap_noob_data * data)
@@ -1109,13 +985,13 @@ static struct wpabuf * eap_noob_build_type_eight(struct eap_noob_data * data, u8
     if (data->keying_mode == KEYING_RECONNECT_EXCHANGE_ECDHE
         || data->keying_mode == KEYING_RECONNECT_EXCHANGE_NEW_CRYPTOSUITE) {
         // Generate key material
-        if (eap_noob_get_key(data) == FAILURE) {
+        if (eap_noob_get_key(data, false) == FAILURE) {
             wpa_printf(MSG_DEBUG, "EAP-NOOB: Failed to generate keys");
             goto EXIT;
         }
 
         // Build JWK to represent server
-        if (FAILURE == eap_noob_build_JWK(&data->ecdh_exchange_data->jwk_serv,
+        if (FAILURE == eap_noob_build_JWK(data, &data->ecdh_exchange_data->jwk_serv,
                     data->ecdh_exchange_data->x_b64)) {
             wpa_printf(MSG_DEBUG, "EAP-NOOB: Failed to generate JWK");
             goto EXIT;
@@ -1453,7 +1329,7 @@ static struct wpabuf * eap_noob_build_type_three(struct eap_noob_data *data, u8 
     wpa_printf(MSG_DEBUG,"EAP-NOOB: Nonce %s", Ns_b64);
 
     // Generate key material
-    if (eap_noob_get_key(data) == FAILURE) {
+    if (eap_noob_get_key(data, false) == FAILURE) {
         wpa_printf(MSG_DEBUG, "EAP-NOOB: Failed to generate keys");
         eap_noob_set_done(data, DONE);
         eap_noob_set_success(data, FAILURE);
@@ -1461,7 +1337,7 @@ static struct wpabuf * eap_noob_build_type_three(struct eap_noob_data *data, u8 
     }
 
     // Build JWK to represent server
-    if (FAILURE == eap_noob_build_JWK(&data->ecdh_exchange_data->jwk_serv,
+    if (FAILURE == eap_noob_build_JWK(data, &data->ecdh_exchange_data->jwk_serv,
                 data->ecdh_exchange_data->x_b64)) {
         wpa_printf(MSG_DEBUG, "EAP-NOOB: Failed to generate JWK");
         goto EXIT;
@@ -2241,7 +2117,7 @@ static void eap_noob_process(struct eap_sm * sm, void * priv, struct wpabuf * re
         goto EXIT;
     }
 
-    resp_obj = json_parse((char *) pos, os_strlen((char *) pos));
+    resp_obj = json_parse((char *) pos, len);
     if (!resp_obj) {
         wpa_printf(MSG_DEBUG, "EAP-NOOB: Error allocating json obj, %s", __func__);
         goto EXIT;
@@ -2471,6 +2347,7 @@ static int eap_noob_server_ctxt_init(struct eap_noob_data * data, struct eap_sm 
         wpa_printf(MSG_DEBUG, "EAP-NOOB: Failed to initialize context");
         return FAILURE;
     }
+    wpa_printf(MSG_DEBUG, "EAP-NOOB: Finished reading config");
 
     if (sm->identity) {
         NAI = os_zalloc(sm->identity_len+1);
@@ -2481,10 +2358,11 @@ static int eap_noob_server_ctxt_init(struct eap_noob_data * data, struct eap_sm 
         os_memcpy(NAI, sm->identity, sm->identity_len);
         strcat(NAI, "\0");
     }
+    wpa_printf(MSG_DEBUG, "EAP-NOOB: Finished retrieving NAI");
 
     if (SUCCESS == (retval = eap_noob_parse_NAI(data, NAI))) {
         if (data->err_code == NO_ERROR) {
-            // Always set the next request to type 9, because every Exchange
+            // Always set the next request to type 1, because every Exchange
             // must start with the Common Handshake,
             // as per version 8 of the draft.
             data->next_req = EAP_NOOB_TYPE_1;
@@ -2494,6 +2372,7 @@ static int eap_noob_server_ctxt_init(struct eap_noob_data * data, struct eap_sm 
     EAP_NOOB_FREE(NAI);
     if (retval == FAILURE)
         wpa_printf(MSG_DEBUG, "EAP-NOOB: Failed to initialize context");
+    wpa_printf(MSG_DEBUG, "EAP-NOOB: Finished context init");
     return retval;
 }
 
