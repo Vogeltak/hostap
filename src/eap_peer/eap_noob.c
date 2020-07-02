@@ -403,8 +403,8 @@ static int eap_noob_db_update(struct eap_noob_data * data, u8 type)
 
     switch(type) {
         case UPDATE_PERSISTENT_STATE:
-            snprintf(query, MAX_QUERY_LEN, "UPDATE PersistentState SET PeerState=? where PeerID=?");
-            ret = eap_noob_exec_query(data, query, NULL, 4, INT, data->peer_state, TEXT, data->peerid);
+            snprintf(query, MAX_QUERY_LEN, "UPDATE PersistentState SET Cryptosuitep=?, CryptosuitepPrev=?, Kz=?, PeerState=? where PeerID=?");
+            ret = eap_noob_exec_query(data, query, NULL, 11, INT, data->cryptosuitep, INT, data->cryptosuitep_prev, BLOB, KZ_LEN, data->kdf_out->Kz, INT, data->peer_state, TEXT, data->peerid);
             break;
         case UPDATE_STATE_ERROR:
             snprintf(query, MAX_QUERY_LEN, "UPDATE EphemeralState SET ErrorCode=? where PeerId=?");
@@ -1109,7 +1109,6 @@ static struct wpabuf * eap_noob_build_type_3(struct eap_noob_data * data, u8 id)
     }
 
     wpabuf_put_data(resp, json_str, len);
-    wpa_hexdump_ascii(MSG_DEBUG, "EAP-NOOB: wpabuf head type 3", wpabuf_head(resp), wpabuf_len(resp));
 EXIT:
     wpabuf_free(json);
     if (json_str)

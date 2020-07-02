@@ -147,8 +147,8 @@ static int eap_noob_db_functions(struct eap_noob_data * data, u8 type)
     wpa_printf(MSG_DEBUG, "EAP-NOOB: Entering %s",__func__);
     switch(type) {
         case UPDATE_PERSISTENT_STATE:
-            os_snprintf(query, MAX_LINE_SIZE, "UPDATE PersistentState SET ServerState=? where PeerId=?");
-            ret = eap_noob_exec_query(data, query, NULL, 4, INT, data->server_state,
+            os_snprintf(query, MAX_LINE_SIZE, "UPDATE PersistentState SET Cryptosuitep=?, Kz=?, ServerState=? where PeerId=?");
+            ret = eap_noob_exec_query(data, query, NULL, 9, INT, data->cryptosuitep, BLOB, KZ_LEN, data->kdf_out->Kz, INT, data->server_state,
                   TEXT, data->peerid);
             break;
         case UPDATE_STATE_ERROR:
