@@ -937,7 +937,7 @@ static struct wpabuf * eap_noob_build_type_5(const struct eap_noob_data * data, 
     size_t len = 100 + strlen(TYPE) + strlen(PEERID) + MAX_PEER_ID_LEN
         + strlen(NOOBID) + NOOBID_LEN;
 
-    wpa_printf(MSG_DEBUG, "EAP-NOOB: Building message response type 8");
+    wpa_printf(MSG_DEBUG, "EAP-NOOB: Building message response type 5");
 
     if (!data) {
         wpa_printf(MSG_DEBUG, "EAP-NOOB: Input arguments NULL for function %s",__func__);

@@ -72,8 +72,8 @@ const int next_request_type[] = {
 /* state vs message type matrix*/
 const int state_message_check[NUM_OF_STATES][NUM_MSG_TYPES] = {
     {VALID, VALID, VALID,   VALID,   INVALID, INVALID, INVALID, INVALID, INVALID, INVALID}, // UNREGISTERED_STATE
-    {VALID, VALID, VALID,   VALID,   VALID,   INVALID, VALID,   INVALID, INVALID, INVALID}, // WAITING_FOR_OOB_STATE
-    {VALID, VALID, VALID,   VALID,   INVALID, INVALID, VALID,   INVALID, INVALID, INVALID}, // OOB_RECEIVED_STATE
+    {VALID, VALID, VALID,   VALID,   VALID,   VALID,   VALID,   INVALID, INVALID, INVALID}, // WAITING_FOR_OOB_STATE
+    {VALID, VALID, VALID,   VALID,   INVALID, VALID,   VALID,   INVALID, INVALID, INVALID}, // OOB_RECEIVED_STATE
     {VALID, VALID, INVALID, INVALID, INVALID, VALID,   INVALID, VALID,   VALID,   VALID},   // RECONNECT
     {VALID, VALID, INVALID, INVALID, INVALID, INVALID, VALID,   INVALID, INVALID, INVALID}  // REGISTERED_STATE
 };
@@ -92,11 +92,12 @@ const int cryptosuites_openssl[MAX_SUP_CSUITES + 1] = {
 
 /*
  * Stores the corresponding name for all cryptosuites defined above.
+ * See https://www.iana.org/assignments/jose/jose.xhtml#web-key-elliptic-curve
  */
 const char *cryptosuites_names[MAX_SUP_CSUITES + 1] = {
     "",
     SN_X25519,
-    SN_X9_62_prime256v1
+    "P-256"
 };
 
 void eap_noob_set_error(struct eap_noob_data *data, int val)
@@ -844,7 +845,7 @@ char * eap_noob_build_mac_input(const struct eap_noob_data * data,
     }
 
     // Server info object
-    if (state == RECONNECTING_STATE) {
+    if (!data->peer_info || !data->server_info) {
         wpabuf_printf(mac_json, ",\"\"");
     } else {
         wpabuf_printf(mac_json, ",%s", data->server_info);
@@ -869,7 +870,7 @@ char * eap_noob_build_mac_input(const struct eap_noob_data * data,
     }
 
     // Peer info object
-    if (state == RECONNECTING_STATE) {
+    if (!data->peer_info || !data->server_info) {
         wpabuf_printf(mac_json, ",\"\"");
     } else {
         wpabuf_printf(mac_json, ",%s", data->peer_info);
