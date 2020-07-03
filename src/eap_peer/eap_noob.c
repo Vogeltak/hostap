@@ -1856,7 +1856,14 @@ static void eap_noob_assign_config(char * conf_name,char * conf_value, struct ea
         wpa_printf(MSG_DEBUG, "EAP-NOOB: FILE  READ= %d",data->version);
     }
     else if (0 == strcmp("Csuite",conf_name)) {
-        data->cryptosuitep = (int) strtol(conf_value, NULL, 10);
+        int csuite = (int) strtol(conf_value, NULL, 10);
+        // If the cryptosuite specified in the EAP-NOOB configuration file has
+        // changed, save the old value from the persistent association in
+        // the cryptosuitep_prev field.
+        if (data->cryptosuitep && csuite != data->cryptosuitep) {
+            data->cryptosuitep_prev = data->cryptosuitep;
+        }
+        data->cryptosuitep = csuite;
         data->config_params |= CRYPTOSUITE_RCVD;
         wpa_printf(MSG_DEBUG, "EAP-NOOB: FILE  READ= %d",data->cryptosuitep);
     }
