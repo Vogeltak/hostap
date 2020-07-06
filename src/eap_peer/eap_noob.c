@@ -648,12 +648,12 @@ static struct wpabuf * eap_noob_build_type_9(const struct eap_noob_data * data, 
     u8 * mac = NULL;
     char * mac_b64 = NULL;
 
+    wpa_printf(MSG_DEBUG, "EAP-NOOB: ENTERING BUILD TYPE 9");
+
     if (!data) {
         wpa_printf(MSG_DEBUG, "EAP-NOOB: Input arguments NULL for function %s",__func__);
         return NULL;
     }
-
-    wpa_printf(MSG_DEBUG, "EAP-NOOB: OOB BUILD RESP TYPE 7");
 
     json = wpabuf_alloc(len);
     if (!json) {
@@ -713,12 +713,12 @@ static struct wpabuf * eap_noob_build_type_8(struct eap_noob_data * data, u8 id)
     size_t secret_len = ECDH_SHARED_SECRET_LEN;
     char * Np_b64;
 
+    wpa_printf(MSG_DEBUG, "EAP-NOOB: ENTERING BUILD TYPE 8");
+
     if (!data) {
         wpa_printf(MSG_DEBUG, "EAP-NOOB: Input arguments NULL for function %s", __func__);
         goto EXIT;
     }
-
-    wpa_printf(MSG_DEBUG, "EAP-NOOB: Entering %s", __func__);
 
     // Generate peer nonce
     data->kdf_nonce_data->Np = os_zalloc(NONCE_LEN);
@@ -817,6 +817,8 @@ static struct wpabuf * eap_noob_build_type_7(struct eap_sm *sm, const struct eap
     size_t len = 100 + strlen(VERP) + strlen(PEERID) + MAX_PEER_ID_LEN + strlen(CRYPTOSUITEP)
         + strlen(PEERINFO) + MAX_INFO_LEN;
 
+    wpa_printf(MSG_DEBUG, "EAP-NOOB: ENTERING BUILD TYPE 7");
+
     if (!data) {
         wpa_printf(MSG_DEBUG, "EAP-NOOB: Input arguments NULL for function %s",__func__);
         goto EXIT;
@@ -875,12 +877,12 @@ static struct wpabuf * eap_noob_build_type_6(const struct eap_noob_data * data, 
     char * mac_b64 = NULL;
     u8 * mac = NULL;
 
+    wpa_printf(MSG_DEBUG, "EAP-NOOB: ENTERING BUILD TYPE 6");
+
     if (!data) {
         wpa_printf(MSG_DEBUG, "EAP-NOOB: Input arguments NULL for function %s", __func__);
         return NULL;
     }
-
-    wpa_printf(MSG_DEBUG, "EAP-NOOB: Entering %s", __func__);
 
     mac = eap_noob_gen_MAC(data, MACP_TYPE, data->kdf_out->Kmp,
             KMP_LEN, data->peer_state);
@@ -937,7 +939,7 @@ static struct wpabuf * eap_noob_build_type_5(const struct eap_noob_data * data, 
     size_t len = 100 + strlen(TYPE) + strlen(PEERID) + MAX_PEER_ID_LEN
         + strlen(NOOBID) + NOOBID_LEN;
 
-    wpa_printf(MSG_DEBUG, "EAP-NOOB: Building message response type 5");
+    wpa_printf(MSG_DEBUG, "EAP-NOOB: ENTERING BUILD TYPE 5");
 
     if (!data) {
         wpa_printf(MSG_DEBUG, "EAP-NOOB: Input arguments NULL for function %s",__func__);
@@ -989,7 +991,8 @@ static struct wpabuf * eap_noob_build_type_4(const struct eap_noob_data *data, u
     char * json_str = NULL;
     size_t len = 100 + strlen(TYPE) + strlen(PEERID) + MAX_PEER_ID_LEN;
 
-    wpa_printf(MSG_DEBUG, "EAP-NOOB: OOB BUILD RESP TYPE 3");
+    wpa_printf(MSG_DEBUG, "EAP-NOOB: ENTERING BUILD TYPE 4");
+
     if (NULL == data) {
         wpa_printf(MSG_DEBUG, "EAP-NOOB: Input arguments NULL for function %s",__func__);
         goto EXIT;
@@ -1039,12 +1042,12 @@ static struct wpabuf * eap_noob_build_type_3(struct eap_noob_data * data, u8 id)
     size_t secret_len = ECDH_SHARED_SECRET_LEN;
     char * Np_b64;
 
+    wpa_printf(MSG_DEBUG, "EAP-NOOB: ENTERING BUILD TYPE 3");
+
     if (!data) {
         wpa_printf(MSG_DEBUG, "EAP-NOOB: Input arguments NULL for function %s", __func__);
         goto EXIT;
     }
-
-    wpa_printf(MSG_DEBUG, "EAP-NOOB: Entering %s", __func__);
 
     // Generate peer nonce
     data->kdf_nonce_data->Np = os_zalloc(NONCE_LEN);
@@ -1131,7 +1134,7 @@ static struct wpabuf * eap_noob_build_type_2(struct eap_sm *sm, const struct eap
     size_t len = 100 + strlen(TYPE) + strlen(VERP) + strlen(PEERID) + MAX_PEER_ID_LEN
         + strlen(CRYPTOSUITEP) + strlen(DIRP) + strlen(PEERINFO) + MAX_INFO_LEN;
 
-    wpa_printf(MSG_DEBUG, "EAP-NOOB: Building message response type 1");
+    wpa_printf(MSG_DEBUG, "EAP-NOOB: ENTERING BUILD TYPE 2");
 
     if (!data) {
         wpa_printf(MSG_DEBUG, "EAP-NOOB: Input arguments NULL for function %s",__func__);
@@ -1188,6 +1191,8 @@ static struct wpabuf * eap_noob_build_type_1(const struct eap_noob_data * data, 
     char * json_str = NULL;
     size_t len = 100 + strlen(TYPE) + strlen(PEERID) + MAX_PEER_ID_LEN + strlen(PEERSTATE);
 
+    wpa_printf(MSG_DEBUG, "EAP-NOOB: ENTERING BUILD TYPE 1");
+
     if (!data) {
         wpa_printf(MSG_DEBUG, "EAP-NOOB: Input arguments NULL for function %s", __func__);
         goto EXIT;
@@ -1240,7 +1245,6 @@ static struct wpabuf * eap_noob_process_type_9(struct eap_sm * sm, struct eap_no
     struct wpabuf * resp = NULL;
     u8 * mac = NULL;
 
-    wpa_printf(MSG_DEBUG, "EAP-NOOB: Entering %s", __func__);
     if (!data) {
         wpa_printf(MSG_DEBUG, "EAP-NOOB: Input arguments NULL for function %s",__func__); return NULL;
     }
@@ -1327,7 +1331,6 @@ static struct wpabuf * eap_noob_process_type_8(struct eap_sm *sm, struct eap_noo
         wpa_printf(MSG_DEBUG, "EAP-NOOB: Input arguments NULL for function %s",__func__);
         return NULL;
     }
-    wpa_printf(MSG_DEBUG, "EAP-NOOB: OOB PROCESS REQ TYPE 6");
 
     if ((data->rcvd_params & TYPE_EIGHT_PARAMS) != TYPE_EIGHT_PARAMS) {
         data->err_code = E1002;
@@ -1358,7 +1361,6 @@ static struct wpabuf * eap_noob_process_type_7(struct eap_sm *sm, struct eap_noo
         wpa_printf(MSG_DEBUG, "EAP-NOOB: Input arguments NULL for function %s",__func__);
         return NULL;
     }
-    wpa_printf(MSG_DEBUG, "EAP-NOOB: OOB PROCESS REQ TYPE 5");
 
     if ((data->rcvd_params & TYPE_SEVEN_PARAMS) != TYPE_SEVEN_PARAMS) {
         data->err_code = E1002;
@@ -1401,7 +1403,6 @@ static struct wpabuf * eap_noob_process_type_6(struct eap_sm * sm, struct eap_no
         wpa_printf(MSG_DEBUG, "EAP-NOOB: Input arguments NULL for function %s",__func__);
         return NULL;
     }
-    wpa_printf(MSG_DEBUG, "EAP-NOOB: Entering %s", __func__);
 
     if (data->rcvd_params != TYPE_SIX_PARAMS) {
         data->err_code = E1002;
@@ -1487,7 +1488,6 @@ static struct wpabuf * eap_noob_process_type_4(struct eap_sm * sm, struct eap_no
     if (!data) {
         wpa_printf(MSG_DEBUG, "EAP-NOOB: Input arguments NULL for function %s",__func__); return NULL;
     }
-    wpa_printf(MSG_DEBUG, "EAP-NOOB: Entering %s", __func__);
 
     if (data->rcvd_params != TYPE_FOUR_PARAMS) {
         data->err_code = E1002;
@@ -1516,7 +1516,6 @@ static struct wpabuf * eap_noob_process_type_3(struct eap_sm *sm, struct eap_noo
         wpa_printf(MSG_DEBUG, "EAP-NOOB: Input arguments NULL for function %s",__func__);
         return NULL;
     }
-    wpa_printf(MSG_DEBUG, "Entering %s", __func__);
 
     if (data->rcvd_params != TYPE_THREE_PARAMS) {
         data->err_code = E1002;
@@ -1554,7 +1553,6 @@ static struct wpabuf * eap_noob_process_type_2(struct eap_sm * sm, struct eap_no
         wpa_printf(MSG_DEBUG, "EAP-NOOB: Input arguments NULL for function %s",__func__);
         return NULL;
     }
-    wpa_printf(MSG_DEBUG, "EAP-NOOB: Entering %s", __func__);
 
     if (data->rcvd_params != TYPE_TWO_PARAMS) {
         data->err_code = E1002;
@@ -1714,34 +1712,43 @@ static struct wpabuf * eap_noob_process(struct eap_sm * sm, void * priv, struct 
             eap_noob_process_msg_error(sm, data, id);
             break;
         case EAP_NOOB_TYPE_1:
+            wpa_printf(MSG_DEBUG, "EAP-NOOB: ENTERING PROCESS TYPE 1");
             resp = eap_noob_process_type_1(sm, data, id);
             break;
         case EAP_NOOB_TYPE_2:
+            wpa_printf(MSG_DEBUG, "EAP-NOOB: ENTERING PROCESS TYPE 2");
             resp = eap_noob_process_type_2(sm, data, id);
             break;
         case EAP_NOOB_TYPE_3:
+            wpa_printf(MSG_DEBUG, "EAP-NOOB: ENTERING PROCESS TYPE 3");
             resp = eap_noob_process_type_3(sm, data, id);
             break;
         case EAP_NOOB_TYPE_4:
+            wpa_printf(MSG_DEBUG, "EAP-NOOB: ENTERING PROCESS TYPE 4");
             resp = eap_noob_process_type_4(sm, data, id);
             break;
+        case EAP_NOOB_TYPE_5:
+            wpa_printf(MSG_DEBUG, "EAP-NOOB: ENTERING PROCESS TYPE 5");
+            resp = eap_noob_process_type_5(sm, data, id);
+            break;
         case EAP_NOOB_TYPE_6:
+            wpa_printf(MSG_DEBUG, "EAP-NOOB: ENTERING PROCESS TYPE 6");
             resp = eap_noob_process_type_6(sm, data, id);
             if(data->err_code == NO_ERROR) {
                 ret->methodState = METHOD_MAY_CONT;
                 ret->decision = DECISION_COND_SUCC;
             }
             break;
-        case EAP_NOOB_TYPE_5:
-            resp = eap_noob_process_type_5(sm, data, id);
-            break;
         case EAP_NOOB_TYPE_7:
+            wpa_printf(MSG_DEBUG, "EAP-NOOB: ENTERING PROCESS TYPE 7");
             resp = eap_noob_process_type_7(sm, data, id);
             break;
         case EAP_NOOB_TYPE_8:
+            wpa_printf(MSG_DEBUG, "EAP-NOOB: ENTERING PROCESS TYPE 8");
             resp = eap_noob_process_type_8(sm, data, id);
             break;
         case EAP_NOOB_TYPE_9:
+            wpa_printf(MSG_DEBUG, "EAP-NOOB: ENTERING PROCESS TYPE 9");
             resp = eap_noob_process_type_9(sm, data, id);
             if(data->err_code == NO_ERROR) {
                 ret->methodState = METHOD_MAY_CONT;

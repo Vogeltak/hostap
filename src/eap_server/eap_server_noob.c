@@ -883,8 +883,6 @@ static struct wpabuf * eap_noob_build_type_9(struct eap_noob_data * data, u8 id)
         return NULL;
     }
 
-    wpa_printf(MSG_DEBUG, "EAP-NOOB: Request 3/Fast Reconnect");
-
     json = wpabuf_alloc(len);
     if (!json) {
         goto EXIT;
@@ -950,8 +948,6 @@ static struct wpabuf * eap_noob_build_type_8(struct eap_noob_data * data, u8 id)
         wpa_printf(MSG_DEBUG, "EAP-NOOB: Input arguments NULL for function %s", __func__);
         goto EXIT;
     }
-
-    wpa_printf(MSG_DEBUG, "EAP-NOOB: Entering %s", __func__);
 
     // Determine KeyingMode
     if (data->cryptosuitep != data->cryptosuitep_prev) {
@@ -1139,8 +1135,6 @@ static struct wpabuf * eap_noob_build_type_6(struct eap_noob_data * data, u8 id)
         return NULL;
     }
 
-    wpa_printf(MSG_DEBUG, "EAP-NOOB: Entering %s", __func__);
-
     if (SUCCESS != eap_noob_gen_KDF(data, COMPLETION_EXCHANGE, false)) {
         wpa_printf(MSG_ERROR, "EAP-NOOB: Error in KDF during Request/NOOB-CE");
         goto EXIT;
@@ -1205,8 +1199,6 @@ static struct wpabuf * eap_noob_build_type_5(struct eap_noob_data * data, u8 id)
         wpa_printf(MSG_DEBUG, "EAP-NOOB: Input arguments NULL for function %s",__func__);
         return NULL;
     }
-
-    wpa_printf(MSG_DEBUG, "EAP-NOOB: Building message request type 8");
 
     json = wpabuf_alloc(len);
     if (!json) {
@@ -1311,8 +1303,6 @@ static struct wpabuf * eap_noob_build_type_3(struct eap_noob_data *data, u8 id)
         wpa_printf(MSG_DEBUG, "EAP-NOOB: Input arguments NULL for function %s", __func__);
         goto EXIT;
     }
-
-    wpa_printf(MSG_DEBUG, "EAP-NOOB: Request 2/Initial Exchange");
 
     // Generate server nonce
     data->kdf_nonce_data->Ns = os_malloc(NONCE_LEN);
@@ -1532,30 +1522,39 @@ static struct wpabuf * eap_noob_buildReq(struct eap_sm * sm, void * priv, u8 id)
             return eap_noob_err_msg(data,id);
 
         case EAP_NOOB_TYPE_1:
+            wpa_printf(MSG_DEBUG, "EAP-NOOB: ENTERING BUILD TYPE 1");
             return eap_noob_build_type_1(data, id);
 
         case EAP_NOOB_TYPE_2:
+            wpa_printf(MSG_DEBUG, "EAP-NOOB: ENTERING BUILD TYPE 2");
             return eap_noob_build_type_2(data, id);
 
         case EAP_NOOB_TYPE_3:
+            wpa_printf(MSG_DEBUG, "EAP-NOOB: ENTERING BUILD TYPE 3");
             return eap_noob_build_type_3(data, id);
 
         case EAP_NOOB_TYPE_4:
+            wpa_printf(MSG_DEBUG, "EAP-NOOB: ENTERING BUILD TYPE 4");
             return eap_noob_build_type_4(data, id);
 
         case EAP_NOOB_TYPE_5:
+            wpa_printf(MSG_DEBUG, "EAP-NOOB: ENTERING BUILD TYPE 5");
             return eap_noob_build_type_5(data, id);
 
         case EAP_NOOB_TYPE_6:
+            wpa_printf(MSG_DEBUG, "EAP-NOOB: ENTERING BUILD TYPE 6");
             return eap_noob_build_type_6(data, id);
 
         case EAP_NOOB_TYPE_7:
+            wpa_printf(MSG_DEBUG, "EAP-NOOB: ENTERING BUILD TYPE 7");
             return eap_noob_build_type_7(data, id);
 
         case EAP_NOOB_TYPE_8:
+            wpa_printf(MSG_DEBUG, "EAP-NOOB: ENTERING BUILD TYPE 8");
             return eap_noob_build_type_8(data, id);
 
         case EAP_NOOB_TYPE_9:
+            wpa_printf(MSG_DEBUG, "EAP-NOOB: ENTERING BUILD TYPE 9");
             return eap_noob_build_type_9(data, id);
 
         default:
@@ -2131,47 +2130,47 @@ static void eap_noob_process(struct eap_sm * sm, void * priv, struct wpabuf * re
     /* TODO : replce switch case with function pointers. */
     switch (data->recv_msg) {
         case EAP_NOOB_TYPE_1:
-            wpa_printf(MSG_DEBUG, "EAP-NOOB: ENTERING NOOB PROCESS TYPE 9");
+            wpa_printf(MSG_DEBUG, "EAP-NOOB: ENTERING NOOB PROCESS TYPE 1");
             eap_noob_process_type_1(data);
             break;
 
         case EAP_NOOB_TYPE_2:
-            wpa_printf(MSG_DEBUG, "EAP-NOOB: ENTERING NOOB PROCESS TYPE 1");
+            wpa_printf(MSG_DEBUG, "EAP-NOOB: ENTERING NOOB PROCESS TYPE 2");
             eap_noob_process_type_2(sm, data);
             break;
 
         case EAP_NOOB_TYPE_3:
-            wpa_printf(MSG_DEBUG, "EAP-NOOB: ENTERING NOOB PROCESS TYPE 2");
+            wpa_printf(MSG_DEBUG, "EAP-NOOB: ENTERING NOOB PROCESS TYPE 3");
             eap_noob_process_type_3(data);
             break;
 
         case EAP_NOOB_TYPE_4:
-            wpa_printf(MSG_DEBUG, "EAP-NOOB: ENTERING NOOB PROCESS TYPE 3");
+            wpa_printf(MSG_DEBUG, "EAP-NOOB: ENTERING NOOB PROCESS TYPE 4");
             eap_noob_process_type_4(data);
             break;
 
         case EAP_NOOB_TYPE_5:
-            wpa_printf(MSG_DEBUG, "EAP-NOOB: ENTERING NOOB PROCESS TYPE NoobId");
+            wpa_printf(MSG_DEBUG, "EAP-NOOB: ENTERING NOOB PROCESS TYPE 5");
             eap_noob_process_type_5(data);
             break;
 
         case EAP_NOOB_TYPE_6:
-            wpa_printf(MSG_DEBUG, "EAP-NOOB: ENTERING NOOB PROCESS TYPE 4");
+            wpa_printf(MSG_DEBUG, "EAP-NOOB: ENTERING NOOB PROCESS TYPE 6");
             eap_noob_process_type_6(data);
             break;
 
         case EAP_NOOB_TYPE_7:
-            wpa_printf(MSG_DEBUG, "EAP-NOOB: ENTERING NOOB PROCESS TYPE 5");
+            wpa_printf(MSG_DEBUG, "EAP-NOOB: ENTERING NOOB PROCESS TYPE 7");
             eap_noob_process_type_7(data);
             break;
 
         case EAP_NOOB_TYPE_8:
-            wpa_printf(MSG_DEBUG, "EAP-NOOB: ENTERING NOOB PROCESS TYPE 6");
+            wpa_printf(MSG_DEBUG, "EAP-NOOB: ENTERING NOOB PROCESS TYPE 8");
             eap_noob_process_type_8(data);
             break;
 
         case EAP_NOOB_TYPE_9:
-            wpa_printf(MSG_DEBUG, "EAP-NOOB: ENTERING NOOB PROCESS TYPE 7");
+            wpa_printf(MSG_DEBUG, "EAP-NOOB: ENTERING NOOB PROCESS TYPE 9");
             eap_noob_process_type_9(data);
             break;
 
