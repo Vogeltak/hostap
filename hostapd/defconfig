@@ -130,6 +130,9 @@ CONFIG_EAP_TTLS=y
 # EAP-EKE for the integrated EAP server
 #CONFIG_EAP_EKE=y
 
+# Support for EAP-NOOB is experimental while the draft is being worked on.
+# See https://datatracker.ietf.org/doc/draft-ietf-emu-eap-noob/
+# Do not use in production!
 # EAP-NOOB
 #CONFIG_EAP_NOOB=y
 

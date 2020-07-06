@@ -166,6 +166,9 @@ CONFIG_EAP_GPSK_SHA256=y
 # EAP-TNC and related Trusted Network Connect support (experimental)
 CONFIG_EAP_TNC=y
 
+# Support for EAP-NOOB is experimental while the draft is being worked on.
+# See https://datatracker.ietf.org/doc/draft-ietf-emu-eap-noob/
+# Do not use in production!
 # EAP-NOOB
 #CONFIG_EAP_NOOB=y
 

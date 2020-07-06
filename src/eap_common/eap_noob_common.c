@@ -114,7 +114,6 @@ void eap_noob_set_error(struct eap_noob_data *data, int val)
 **/
 int eap_noob_Base64Decode(const char * b64message, unsigned char ** buffer)
 {
-    fprintf(stderr, "ENTER B64DECODE FUN\n");
     size_t len = os_strlen(b64message);
     size_t b64pad = 4*((len + 3)/4) - len;
     char *temp = os_zalloc(len + b64pad + 1);

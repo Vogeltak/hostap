@@ -768,7 +768,7 @@ CFLAGS += -DINT_DISP="\"eth0\""
 OBJS += ../src/eap_peer/eap_noob.o
 OBJS += ../src/eap_common/eap_noob_common.o
 endif
-LIBS += -lsqlite3
+CONFIG_SQLITE=y
 NEED_JSON=y
 CONFIG_IEEE8021X_EAPOL=y
 endif
@@ -1797,6 +1797,12 @@ endif
 ifdef NEED_JSON
 OBJS += ../src/utils/json.o
 CFLAGS += -DCONFIG_JSON
+endif
+
+ifdef CONFIG_SQLITE
+CFLAGS += -DCONFIG_SQLITE
+LIBS += -lsqlite3
+LIBS_h += -lsqlite3
 endif
 
 ifdef CONFIG_MODULE_TESTS

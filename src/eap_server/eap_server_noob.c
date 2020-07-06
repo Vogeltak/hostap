@@ -869,7 +869,7 @@ EXIT:
  * @id  : EAP Packet ID
  * Returns : Pointer to allocated EAP-Request packet, or NULL if not.
 **/
-static struct wpabuf * eap_noob_build_type_nine(struct eap_noob_data * data, u8 id)
+static struct wpabuf * eap_noob_build_type_9(struct eap_noob_data * data, u8 id)
 {
     struct wpabuf * json = NULL;
     struct wpabuf * resp = NULL;
@@ -937,7 +937,7 @@ EXIT:
  * @id: EAP packet ID
  * Returns: Pointer to allocated EAP-Request packet, or NULL if not.
  **/
-static struct wpabuf * eap_noob_build_type_eight(struct eap_noob_data * data, u8 id)
+static struct wpabuf * eap_noob_build_type_8(struct eap_noob_data * data, u8 id)
 {
     struct wpabuf * json = NULL;
     struct wpabuf * resp = NULL;
@@ -1051,7 +1051,7 @@ EXIT:
  * @id: EAP packet ID
  * Returns: Pointer to allocated EAP-Request packet, or NULL if not.
  **/
-static struct wpabuf * eap_noob_build_type_seven(struct eap_noob_data * data, u8 id)
+static struct wpabuf * eap_noob_build_type_7(struct eap_noob_data * data, u8 id)
 {
     struct wpabuf * json = NULL;
     struct wpabuf * resp = NULL;
@@ -1124,7 +1124,7 @@ EXIT:
  * @id: EAP packet ID
  * Returns: Pointer to allocated EAP-Request packet, or NULL if not.
  **/
-static struct wpabuf * eap_noob_build_type_six(struct eap_noob_data * data, u8 id)
+static struct wpabuf * eap_noob_build_type_6(struct eap_noob_data * data, u8 id)
 {
     struct wpabuf * json = NULL;
     struct wpabuf * resp = NULL;
@@ -1194,7 +1194,7 @@ EXIT:
  * @id: EAP response to be processed (eapRespData)
  * Returns: Pointer to allocated EAP-Request packet, or NULL if not.
  **/
-static struct wpabuf * eap_noob_build_type_five(struct eap_noob_data * data, u8 id)
+static struct wpabuf * eap_noob_build_type_5(struct eap_noob_data * data, u8 id)
 {
     struct wpabuf * json = NULL;
     struct wpabuf * resp = NULL;
@@ -1241,7 +1241,7 @@ EXIT:
  * @id: EAP packet ID
  * Returns: Pointer to allocated EAP-Request packet, or NULL if not.
  **/
-static struct wpabuf * eap_noob_build_type_four(struct eap_noob_data * data, u8 id)
+static struct wpabuf * eap_noob_build_type_4(struct eap_noob_data * data, u8 id)
 {
     struct wpabuf * json = NULL;
     struct wpabuf * resp = NULL;
@@ -1297,7 +1297,7 @@ EXIT:
  * @id: EAP packet ID
  * Returns: Pointer to allocated EAP-Request packet, or NULL if not.
  **/
-static struct wpabuf * eap_noob_build_type_three(struct eap_noob_data *data, u8 id)
+static struct wpabuf * eap_noob_build_type_3(struct eap_noob_data *data, u8 id)
 {
     struct wpabuf * json = NULL;
     struct wpabuf * resp = NULL;
@@ -1390,7 +1390,7 @@ EXIT:
  * @id: EAP packet ID
  * Returns: Pointer to allocated EAP-Request packet, or NULL if not.
  **/
-static struct wpabuf * eap_noob_build_type_two(struct eap_noob_data * data, u8 id)
+static struct wpabuf * eap_noob_build_type_2(struct eap_noob_data * data, u8 id)
 {
     struct wpabuf * json = NULL;
     struct wpabuf * resp = NULL;
@@ -1470,7 +1470,7 @@ EXIT:
  * @id: EAP response to be processed (eapRespData)
  * Return: Pointer to allocated EAP-Request packet, or NULL if an error occurred
  */
-static struct wpabuf * eap_noob_build_type_one(struct eap_noob_data * data, u8 id)
+static struct wpabuf * eap_noob_build_type_1(struct eap_noob_data * data, u8 id)
 {
     struct wpabuf * json = NULL;
     struct wpabuf * resp = NULL;
@@ -1532,31 +1532,31 @@ static struct wpabuf * eap_noob_buildReq(struct eap_sm * sm, void * priv, u8 id)
             return eap_noob_err_msg(data,id);
 
         case EAP_NOOB_TYPE_1:
-            return eap_noob_build_type_one(data, id);
+            return eap_noob_build_type_1(data, id);
 
         case EAP_NOOB_TYPE_2:
-            return eap_noob_build_type_two(data, id);
+            return eap_noob_build_type_2(data, id);
 
         case EAP_NOOB_TYPE_3:
-            return eap_noob_build_type_three(data, id);
+            return eap_noob_build_type_3(data, id);
 
         case EAP_NOOB_TYPE_4:
-            return eap_noob_build_type_four(data, id);
+            return eap_noob_build_type_4(data, id);
 
         case EAP_NOOB_TYPE_5:
-            return eap_noob_build_type_five(data, id);
+            return eap_noob_build_type_5(data, id);
 
         case EAP_NOOB_TYPE_6:
-            return eap_noob_build_type_six(data, id);
+            return eap_noob_build_type_6(data, id);
 
         case EAP_NOOB_TYPE_7:
-            return eap_noob_build_type_seven(data, id);
+            return eap_noob_build_type_7(data, id);
 
         case EAP_NOOB_TYPE_8:
-            return eap_noob_build_type_eight(data, id);
+            return eap_noob_build_type_8(data, id);
 
         case EAP_NOOB_TYPE_9:
-            return eap_noob_build_type_nine(data, id);
+            return eap_noob_build_type_9(data, id);
 
         default:
             wpa_printf(MSG_DEBUG, "EAP-NOOB: Unknown type in buildReq");
@@ -1691,7 +1691,7 @@ int eap_noob_FindIndex(int value)
  * Process EAP-Response type 9: Reconnect Exchange HMAC
  * @data: Pointer to private EAP-NOOB data
  **/
-static void eap_noob_process_type_nine(struct eap_noob_data * data)
+static void eap_noob_process_type_9(struct eap_noob_data * data)
 {
     u8 * mac = NULL; char * mac_b64 = NULL;
 
@@ -1734,7 +1734,7 @@ EXIT:
  * Process EAP-Response 8: Reconnect Exchange ECDH key exchange
  * @data: Pointer to private EAP-NOOB data
  **/
-static void eap_noob_process_type_eight(struct eap_noob_data * data)
+static void eap_noob_process_type_8(struct eap_noob_data * data)
 {
     size_t secret_len = ECDH_SHARED_SECRET_LEN;
 
@@ -1770,7 +1770,7 @@ static void eap_noob_process_type_eight(struct eap_noob_data * data)
  * Process EAP-Response Type 7: Reconnect Exchange parameter negotiation
  * @data: Pointer to private EAP-NOOB data
  **/
-static void eap_noob_process_type_seven(struct eap_noob_data * data)
+static void eap_noob_process_type_7(struct eap_noob_data * data)
 {
     if (!data) {
         wpa_printf(MSG_DEBUG, "EAP-NOOB: Input arguments NULL for function %s",__func__);
@@ -1798,7 +1798,7 @@ static void eap_noob_process_type_seven(struct eap_noob_data * data)
  * Process EAP-Response Type 6: Completion Exchange HMAC
  * @data: Pointer to private EAP-NOOB data
  **/
-static void eap_noob_process_type_six(struct eap_noob_data * data)
+static void eap_noob_process_type_6(struct eap_noob_data * data)
 {
     u8 * mac = NULL; char * mac_b64 = NULL; int dir = 0;
 
@@ -1840,7 +1840,7 @@ EXIT:
  * Process EAP-Response type 5: NoobId discovery in the Completion Exchange
  * @data: Pointer to private EAP-NOOB data
  **/
-static void eap_noob_process_type_five(struct eap_noob_data * data)
+static void eap_noob_process_type_5(struct eap_noob_data * data)
 {
     if ((data->err_code != NO_ERROR)) {
         eap_noob_set_done(data, NOT_DONE);
@@ -1874,7 +1874,7 @@ static void eap_noob_process_type_five(struct eap_noob_data * data)
  * Process EAP-Response Type 4: Waiting Exchange message
  * @data: Pointer to private EAP-NOOB data
  **/
-static void eap_noob_process_type_four(struct eap_noob_data * data)
+static void eap_noob_process_type_4(struct eap_noob_data * data)
 {
     if (!data) {
         wpa_printf(MSG_DEBUG, "EAP-NOOB: Input arguments NULL for function %s",__func__);
@@ -1904,7 +1904,7 @@ static void eap_noob_process_type_four(struct eap_noob_data * data)
  * Process EAP-Response type 3: Initial Exchange ECDH key exchange
  * @data: Pointer to private EAP-NOOB data
  **/
-static void eap_noob_process_type_three(struct eap_noob_data * data)
+static void eap_noob_process_type_3(struct eap_noob_data * data)
 {
     size_t secret_len = ECDH_SHARED_SECRET_LEN;
 
@@ -1955,7 +1955,7 @@ static void eap_noob_process_type_three(struct eap_noob_data * data)
  * @sm: EAP state machine
  * @data: Pointer to private EAP-NOOB data
  **/
-static void eap_noob_process_type_two(struct eap_sm *sm,
+static void eap_noob_process_type_2(struct eap_sm *sm,
                                   struct eap_noob_data *data)
 {
     /* Check for the supporting cryptosuites, PeerId, version, direction*/
@@ -1983,7 +1983,7 @@ static void eap_noob_process_type_two(struct eap_sm *sm,
  * Process EAP-Response type 1: Common Handshake
  * @data: Pointer to private EAP-NOOB data
  **/
-static void eap_noob_process_type_one(struct eap_noob_data * data)
+static void eap_noob_process_type_1(struct eap_noob_data * data)
 {
     int result = SUCCESS;
     char * input = NULL;
@@ -2137,47 +2137,47 @@ static void eap_noob_process(struct eap_sm * sm, void * priv, struct wpabuf * re
     switch (data->recv_msg) {
         case EAP_NOOB_TYPE_1:
             wpa_printf(MSG_DEBUG, "EAP-NOOB: ENTERING NOOB PROCESS TYPE 9");
-            eap_noob_process_type_one(data);
+            eap_noob_process_type_1(data);
             break;
 
         case EAP_NOOB_TYPE_2:
             wpa_printf(MSG_DEBUG, "EAP-NOOB: ENTERING NOOB PROCESS TYPE 1");
-            eap_noob_process_type_two(sm, data);
+            eap_noob_process_type_2(sm, data);
             break;
 
         case EAP_NOOB_TYPE_3:
             wpa_printf(MSG_DEBUG, "EAP-NOOB: ENTERING NOOB PROCESS TYPE 2");
-            eap_noob_process_type_three(data);
+            eap_noob_process_type_3(data);
             break;
 
         case EAP_NOOB_TYPE_4:
             wpa_printf(MSG_DEBUG, "EAP-NOOB: ENTERING NOOB PROCESS TYPE 3");
-            eap_noob_process_type_four(data);
+            eap_noob_process_type_4(data);
             break;
 
         case EAP_NOOB_TYPE_5:
             wpa_printf(MSG_DEBUG, "EAP-NOOB: ENTERING NOOB PROCESS TYPE NoobId");
-            eap_noob_process_type_five(data);
+            eap_noob_process_type_5(data);
             break;
 
         case EAP_NOOB_TYPE_6:
             wpa_printf(MSG_DEBUG, "EAP-NOOB: ENTERING NOOB PROCESS TYPE 4");
-            eap_noob_process_type_six(data);
+            eap_noob_process_type_6(data);
             break;
 
         case EAP_NOOB_TYPE_7:
             wpa_printf(MSG_DEBUG, "EAP-NOOB: ENTERING NOOB PROCESS TYPE 5");
-            eap_noob_process_type_seven(data);
+            eap_noob_process_type_7(data);
             break;
 
         case EAP_NOOB_TYPE_8:
             wpa_printf(MSG_DEBUG, "EAP-NOOB: ENTERING NOOB PROCESS TYPE 6");
-            eap_noob_process_type_eight(data);
+            eap_noob_process_type_8(data);
             break;
 
         case EAP_NOOB_TYPE_9:
             wpa_printf(MSG_DEBUG, "EAP-NOOB: ENTERING NOOB PROCESS TYPE 7");
-            eap_noob_process_type_nine(data);
+            eap_noob_process_type_9(data);
             break;
 
         case NONE:
