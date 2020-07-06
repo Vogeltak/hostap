@@ -1998,11 +1998,6 @@ static void eap_noob_process_type_1(struct eap_noob_data * data)
         goto EXIT;
     }
 
-    // Retrieve data set in the configuration file
-    if (FAILURE == (result = eap_noob_read_config(data))) {
-        goto EXIT;
-    }
-
     // Check whether new OOB data has arrived, if so, verify the Hoob
     if (data->server_state == WAITING_FOR_OOB_STATE &&
         data->dirp == PEER_TO_SERVER) {
@@ -2343,7 +2338,7 @@ static int eap_noob_server_ctxt_init(struct eap_noob_data * data, struct eap_sm 
     data->rcvd_params = 0;
     data->sleep_count = 0;
 
-    if (server_conf.read_conf == 0 && FAILURE == eap_noob_read_config(data)) {
+    if (FAILURE == eap_noob_read_config(data)) {
         wpa_printf(MSG_DEBUG, "EAP-NOOB: Failed to initialize context");
         return FAILURE;
     }
