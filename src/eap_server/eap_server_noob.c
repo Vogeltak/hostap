@@ -1698,7 +1698,6 @@ static void eap_noob_process_type_9(struct eap_noob_data * data)
         wpa_printf(MSG_DEBUG, "EAP-NOOB: Input arguments NULL for function %s", __func__);
         return;
     }
-    wpa_printf(MSG_DEBUG, "EAP-NOOB: Response Processed/NOOB-FR-3");
 
     /* TODO :  validate MAC address along with peerID */
     if (data->rcvd_params != TYPE_NINE_PARAMS) {
@@ -1741,7 +1740,6 @@ static void eap_noob_process_type_8(struct eap_noob_data * data)
         wpa_printf(MSG_DEBUG, "EAP-NOOB: Input arguments NULL for function %s",__func__);
         return ;
     }
-    wpa_printf(MSG_DEBUG, "EAP-NOOB: Response Processed/NOOB-FR-2");
     if ((data->rcvd_params & TYPE_EIGHT_PARAMS) != TYPE_EIGHT_PARAMS) {
         eap_noob_set_error(data, E1002);
         eap_noob_set_done(data, NOT_DONE); return;
@@ -1749,13 +1747,18 @@ static void eap_noob_process_type_8(struct eap_noob_data * data)
     if ((data->err_code != NO_ERROR)) {
         eap_noob_set_done(data, NOT_DONE); return;
     }
-    if (eap_noob_derive_session_secret(data,&secret_len) != SUCCESS) {
-        wpa_printf(MSG_DEBUG, "EAP-NOOB: Error in deriving shared key"); return;
-    }
-    eap_noob_Base64Encode(data->ecdh_exchange_data->shared_key,
-        ECDH_SHARED_SECRET_LEN, &data->ecdh_exchange_data->shared_key_b64);
 
-    wpa_printf(MSG_DEBUG, "EAP-NOOB: Shared secret %s", data->ecdh_exchange_data->shared_key_b64);
+    // Only derive a new shared session secret if Keyingmode is either 2 or 3
+    if (data->keying_mode == KEYING_RECONNECT_EXCHANGE_ECDHE
+        || data->keying_mode == KEYING_RECONNECT_EXCHANGE_NEW_CRYPTOSUITE) {
+        if (eap_noob_derive_session_secret(data,&secret_len) != SUCCESS) {
+            wpa_printf(MSG_DEBUG, "EAP-NOOB: Error in deriving shared key"); return;
+        }
+        eap_noob_Base64Encode(data->ecdh_exchange_data->shared_key,
+            ECDH_SHARED_SECRET_LEN, &data->ecdh_exchange_data->shared_key_b64);
+
+        wpa_printf(MSG_DEBUG, "EAP-NOOB: Shared secret %s", data->ecdh_exchange_data->shared_key_b64);
+    }
 
     wpa_hexdump_ascii(MSG_DEBUG, "EAP-NOOB: Nonce Peer", data->kdf_nonce_data->Np, NONCE_LEN);
 
@@ -1775,7 +1778,6 @@ static void eap_noob_process_type_7(struct eap_noob_data * data)
         wpa_printf(MSG_DEBUG, "EAP-NOOB: Input arguments NULL for function %s",__func__);
         return ;
     }
-    wpa_printf(MSG_DEBUG, "EAP-NOOB: Response Processed/NOOB-FR-1");
     /* TODO: Check for the current cryptosuite and the previous to
      * decide whether new key exchange has to be done. */
     if ((data->err_code != NO_ERROR)) {
@@ -1879,7 +1881,6 @@ static void eap_noob_process_type_4(struct eap_noob_data * data)
         wpa_printf(MSG_DEBUG, "EAP-NOOB: Input arguments NULL for function %s",__func__);
         return ;
     }
-    wpa_printf(MSG_DEBUG, "EAP-NOOB: Response Processed/NOOB-WE-3");
 
     if (data->rcvd_params != TYPE_FOUR_PARAMS) {
         eap_noob_set_error(data,E1002);
@@ -1911,7 +1912,6 @@ static void eap_noob_process_type_3(struct eap_noob_data * data)
         wpa_printf(MSG_DEBUG, "EAP-NOOB: Input arguments NULL for function %s",__func__);
         return ;
     }
-    wpa_printf(MSG_DEBUG, "EAP-NOOB: Response Processed/NOOB-IE-2");
 
     if (data->rcvd_params != TYPE_THREE_PARAMS) {
         eap_noob_set_error(data,E1002);
@@ -1958,7 +1958,6 @@ static void eap_noob_process_type_2(struct eap_sm *sm,
                                   struct eap_noob_data *data)
 {
     /* Check for the supporting cryptosuites, PeerId, version, direction*/
-    wpa_printf(MSG_DEBUG, "EAP-NOOB: Response Processed/NOOB-IE-1");
 
     if (!data || !sm) {
         wpa_printf(MSG_DEBUG, "EAP-NOOB: Input arguments NULL for function %s",__func__);
