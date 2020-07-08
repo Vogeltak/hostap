@@ -278,7 +278,7 @@ static int eap_noob_parse_NAI(struct eap_noob_data * data, const char * NAI)
 
     _NAI = (char *)NAI;
 
-    if (os_strstr(_NAI, DEFAULT_REALM) || os_strstr(_NAI, server_conf.realm)) {
+    if (os_strstr(_NAI, DEFAULT_REALM) || (server_conf.realm && os_strstr(_NAI, server_conf.realm))) {
         user_name_peer = strsep(&_NAI, "@");
         realm = strsep(&_NAI, "@");
 
@@ -295,7 +295,7 @@ static int eap_noob_parse_NAI(struct eap_noob_data * data, const char * NAI)
 
         // TODO: This if-else block is unnecessary, taking into account all
         // previously conducted tests.
-        if (0 == strcmp(realm, server_conf.realm)) {
+        if (server_conf.realm && 0 == strcmp(realm, server_conf.realm)) {
             return SUCCESS;
         } else if (0 == strcmp("noob", user_name_peer) && 0 == strcmp(realm, DEFAULT_REALM)) {
             data->peer_state = UNREGISTERED_STATE;
@@ -841,7 +841,7 @@ static struct wpabuf * eap_noob_err_msg(struct eap_noob_data * data, u8 id)
     json_end_object(json);
 
     json_str = strndup(wpabuf_head(json), wpabuf_len(json));
-    len = os_strlen(json_str);
+    len = os_strlen(json_str) + 1;
 
     if (code != E1001 && FAILURE == eap_noob_db_functions(data, UPDATE_STATE_ERROR)) {
         wpa_printf(MSG_DEBUG,"EAP-NOOB: Failed to write error to the database");
@@ -913,7 +913,7 @@ static struct wpabuf * eap_noob_build_type_9(struct eap_noob_data * data, u8 id)
     json_end_object(json);
 
     json_str = strndup(wpabuf_head(json), wpabuf_len(json));
-    len = os_strlen(json_str);
+    len = os_strlen(json_str) + 1;
 
     resp = eap_msg_alloc(EAP_VENDOR_IETF, EAP_TYPE_NOOB,len , EAP_CODE_REQUEST, id);
     if (!resp) {
@@ -1060,6 +1060,11 @@ static struct wpabuf * eap_noob_build_type_7(struct eap_noob_data * data, u8 id)
         goto EXIT;
     }
 
+    if (FAILURE == eap_noob_read_config(data)) {
+        wpa_printf(MSG_DEBUG, "EAP-NOOB: Failed to read config file");
+        goto EXIT;
+    }
+
     json = wpabuf_alloc(len);
     if (!json) {
         goto EXIT;
@@ -1099,7 +1104,7 @@ static struct wpabuf * eap_noob_build_type_7(struct eap_noob_data * data, u8 id)
     json_end_object(json);
 
     json_str = strndup(wpabuf_head(json), wpabuf_len(json));
-    len = os_strlen(json_str);
+    len = os_strlen(json_str) + 1;
 
     resp = eap_msg_alloc(EAP_VENDOR_IETF, EAP_TYPE_NOOB, len, EAP_CODE_REQUEST, id);
     if (!resp) {
@@ -1212,7 +1217,7 @@ static struct wpabuf * eap_noob_build_type_5(struct eap_noob_data * data, u8 id)
     json_end_object(json);
 
     json_str = strndup(wpabuf_head(json), wpabuf_len(json));
-    len = os_strlen(json_str);
+    len = os_strlen(json_str) + 1;
 
     resp = eap_msg_alloc(EAP_VENDOR_IETF, EAP_TYPE_NOOB, len, EAP_CODE_REQUEST, id);
     if (!resp) {
@@ -1267,7 +1272,7 @@ static struct wpabuf * eap_noob_build_type_4(struct eap_noob_data * data, u8 id)
     wpa_printf(MSG_DEBUG, "EAP-NOOB: Current time is %ld", data->last_used_time);
 
     json_str = strndup(wpabuf_head(json), wpabuf_len(json));
-    len = os_strlen(json_str);
+    len = os_strlen(json_str) + 1;
 
     resp = eap_msg_alloc(EAP_VENDOR_IETF, EAP_TYPE_NOOB, len, EAP_CODE_REQUEST, id);
     if (resp == NULL) {
@@ -1357,7 +1362,7 @@ static struct wpabuf * eap_noob_build_type_3(struct eap_noob_data *data, u8 id)
     json_end_object(json);
 
     json_str = strndup(wpabuf_head(json), wpabuf_len(json));
-    len = os_strlen(json_str);
+    len = os_strlen(json_str) + 1;
 
     resp = eap_msg_alloc(EAP_VENDOR_IETF, EAP_TYPE_NOOB, len, EAP_CODE_REQUEST, id);
     if (!resp) {
@@ -1390,6 +1395,11 @@ static struct wpabuf * eap_noob_build_type_2(struct eap_noob_data * data, u8 id)
 
     if (!data) {
         wpa_printf(MSG_DEBUG, "EAP-NOOB: Input arguments NULL for function %s",__func__);
+        goto EXIT;
+    }
+
+    if (FAILURE == eap_noob_read_config(data)) {
+        wpa_printf(MSG_DEBUG, "EAP-NOOB: Failed to read config file");
         goto EXIT;
     }
 
@@ -1439,7 +1449,7 @@ static struct wpabuf * eap_noob_build_type_2(struct eap_noob_data * data, u8 id)
     json_end_object(json);
 
     json_str = strndup(wpabuf_head(json), wpabuf_len(json));
-    len = os_strlen(json_str);
+    len = os_strlen(json_str) + 1;
 
     resp = eap_msg_alloc(EAP_VENDOR_IETF, EAP_TYPE_NOOB, len, EAP_CODE_REQUEST, id);
     if (!resp) {
@@ -1482,7 +1492,7 @@ static struct wpabuf * eap_noob_build_type_1(struct eap_noob_data * data, u8 id)
     json_end_object(json);
 
     json_str = strndup(wpabuf_head(json), wpabuf_len(json));
-    len = os_strlen(json_str);
+    len = os_strlen(json_str) + 1;
 
     resp = eap_msg_alloc(EAP_VENDOR_IETF, EAP_TYPE_NOOB, len, EAP_CODE_REQUEST, id);
     if (!resp) {
@@ -1601,7 +1611,7 @@ static _Bool eap_noob_check(struct eap_sm * sm, void * priv,
 
     // Check for possible errors
 
-    resp_obj = json_parse((char *) pos, len);
+    resp_obj = json_parse((char *) pos, os_strlen((char *) pos));
     if (resp_obj && resp_obj->type == JSON_OBJECT) {
         resp_type = json_get_member(resp_obj, TYPE);
 
@@ -2073,7 +2083,7 @@ static void eap_noob_process_type_1(struct eap_noob_data * data)
     }
 EXIT:
     if (result == FAILURE) {
-        wpa_printf(MSG_ERROR, "EAP-NOOB: Error while handling response message type 9");
+        wpa_printf(MSG_ERROR, "EAP-NOOB: Error while handling response message type 1");
     }
     data->rcvd_params = 0;
 }
@@ -2112,6 +2122,7 @@ static void eap_noob_process(struct eap_sm * sm, void * priv, struct wpabuf * re
     }
 
     resp_obj = json_parse((char *) pos, len);
+    resp_obj = json_parse((char *) pos, os_strlen((char *) pos));
     if (!resp_obj) {
         wpa_printf(MSG_DEBUG, "EAP-NOOB: Error allocating json obj, %s", __func__);
         goto EXIT;
@@ -2336,12 +2347,6 @@ static int eap_noob_server_ctxt_init(struct eap_noob_data * data, struct eap_sm 
     data->err_code = NO_ERROR;
     data->rcvd_params = 0;
     data->sleep_count = 0;
-
-    if (FAILURE == eap_noob_read_config(data)) {
-        wpa_printf(MSG_DEBUG, "EAP-NOOB: Failed to initialize context");
-        return FAILURE;
-    }
-    wpa_printf(MSG_DEBUG, "EAP-NOOB: Finished reading config");
 
     if (sm->identity) {
         NAI = os_zalloc(sm->identity_len+1);

@@ -40,7 +40,8 @@
     PeerState INTEGER,                              \
     JwkServer TEXT,                                 \
     JwkPeer TEXT,                                   \
-    OobRetries);                                    \
+    OobRetries INTEGER,                             \
+    Dirp INTEGER);                                  \
                                                     \
     CREATE TABLE IF NOT EXISTS EphemeralNoob(       \
     Ssid TEXT NOT NULL REFERENCES EphemeralState(Ssid), \

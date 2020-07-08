@@ -301,10 +301,10 @@ void eap_noob_verify_param_len(struct eap_noob_data * data)
                     }
                     break;
                 case INFO_RCVD:
-                    if (strlen(data->peer_info) > MAX_INFO_LEN) {
+                    if (data->peer_info && strlen(data->peer_info) > MAX_INFO_LEN) {
                         eap_noob_set_error(data, E5004);
                     }
-                    if (strlen(data->server_info) > MAX_INFO_LEN) {
+                    if (data->server_info && strlen(data->server_info) > MAX_INFO_LEN) {
                         eap_noob_set_error(data, E5002);
                     }
                     break;
