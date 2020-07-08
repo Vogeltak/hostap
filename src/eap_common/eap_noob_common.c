@@ -314,7 +314,6 @@ void eap_noob_verify_param_len(struct eap_noob_data * data)
         }
         pos = pos<<1;
     }
-    wpa_printf(MSG_DEBUG, "EAP-NOOB: Exiting %s", __func__);
 }
 
 /**
@@ -1355,7 +1354,6 @@ EXIT:
             wpa_printf(MSG_DEBUG,"EAP-NOOB: SQL error : %s", sql_error);
     }
     if (stmt) sqlite3_finalize(stmt);
-    wpa_printf(MSG_DEBUG, "EAP-NOOB: Exiting %s, ret %d",__func__, ret);
     return ret;
 }
 
