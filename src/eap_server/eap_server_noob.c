@@ -725,7 +725,8 @@ ERROR_EXIT:
     if (ret != SUCCESS)
         EAP_NOOB_FREE(data->server_config_params);
     EAP_NOOB_FREE(buff);
-    fclose(conf_file);
+    if (conf_file)
+        fclose(conf_file);
     return ret;
 }
 
