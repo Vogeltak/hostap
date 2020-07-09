@@ -314,7 +314,6 @@ void eap_noob_verify_param_len(struct eap_noob_data * data)
         }
         pos = pos<<1;
     }
-    wpa_printf(MSG_DEBUG, "EAP-NOOB: Exiting %s", __func__);
 }
 
 /**

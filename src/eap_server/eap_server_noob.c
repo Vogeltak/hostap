@@ -2122,10 +2122,6 @@ static void eap_noob_process(struct eap_sm * sm, void * priv, struct wpabuf * re
     // Decode the JSON object and store it locally
     // This way, all methods will be able to access it.
     eap_noob_decode_obj(data, resp_obj);
-    if (data->err_code != NO_ERROR) {
-        wpa_printf(MSG_ERROR, "EAP-NOOB: Decoding gave error: %s", error_info[data->err_code]);
-        goto EXIT;
-    }
 
     /* TODO : replce switch case with function pointers. */
     switch (data->recv_msg) {
@@ -2175,7 +2171,7 @@ static void eap_noob_process(struct eap_sm * sm, void * priv, struct wpabuf * re
             break;
 
         case NONE:
-            wpa_printf(MSG_DEBUG, "EAP-NOOB: ERROR received");
+            wpa_printf(MSG_DEBUG, "EAP-NOOB: Received error code E%d", data->err_code);
             if (FAILURE == eap_noob_db_functions(data, UPDATE_STATE_ERROR)) {
                 wpa_printf(MSG_DEBUG,"Fail to Write Error to DB");
             }
