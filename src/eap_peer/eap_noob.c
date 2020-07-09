@@ -507,7 +507,6 @@ static int eap_noob_update_persistentstate(struct eap_noob_data * data)
             INT, data->peer_state));
     if (err < 0) { ret = FAILURE; goto EXIT; }
 EXIT:
-    wpa_printf(MSG_DEBUG, "EAP-NOOB: Exiting %s, return %d",__func__, ret);
     return ret;
 }
 
@@ -555,6 +554,12 @@ static int eap_noob_create_db(struct eap_sm *sm, struct eap_noob_data * data)
                 return SUCCESS;
             }
         }
+    } else {
+        // No SSID found nor is there a wired connection.
+        // Gracefully stop, because the peer should be able to identify the
+        // network it is on.
+        wpa_printf(MSG_DEBUG, "EAP-NOOB: No SSID configured. Halting execution.");
+        return FAILURE;
     }
     if (data->peerid)
         data->peerid = os_strdup(data->peerid);

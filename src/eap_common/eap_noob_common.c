@@ -1354,7 +1354,6 @@ EXIT:
             wpa_printf(MSG_DEBUG,"EAP-NOOB: SQL error : %s", sql_error);
     }
     if (stmt) sqlite3_finalize(stmt);
-    wpa_printf(MSG_DEBUG, "EAP-NOOB: Exiting %s, ret %d",__func__, ret);
     return ret;
 }
 
@@ -1451,7 +1450,6 @@ int eap_noob_exec_query(struct eap_noob_data * data, const char * query,
     }
 
 EXIT:
-    wpa_printf(MSG_DEBUG, "EAP-NOOB: Exiting %s, ret %d", __func__, ret);
     if (ret == FAILURE) {
         char * sql_error = (char *)sqlite3_errmsg(data->db);
         if (sql_error != NULL)

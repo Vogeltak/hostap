@@ -211,7 +211,6 @@ static int eap_noob_db_functions(struct eap_noob_data * data, u8 type)
         wpa_printf(MSG_ERROR, "EAP-NOOB: DB value update failed");
         return FAILURE;
     }
-    wpa_printf(MSG_DEBUG, "EAP-NOOB: Exiting %s, ret = SUCCESS", __func__);
     return SUCCESS;
 }
 
@@ -304,7 +303,6 @@ static int eap_noob_parse_NAI(struct eap_noob_data * data, const char * NAI)
     }
 
     // NAI realm is neither the DEFAULT_REALM nor the configured realm
-    wpa_printf(MSG_DEBUG, "EAP-NOOB: Exiting %s, setting error E1001",__func__);
     eap_noob_set_error(data, E1001);
     return FAILURE;
 }
@@ -385,7 +383,6 @@ static int eap_noob_create_db(struct eap_noob_data * data)
             return eap_noob_query_persistentstate(data);
     }
 
-    wpa_printf(MSG_DEBUG, "EAP-NOOB: Exiting %s",__func__);
     return SUCCESS;
 }
 
