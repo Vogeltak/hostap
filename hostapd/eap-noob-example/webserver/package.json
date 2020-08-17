@@ -1,0 +1,16 @@
+{
+  "name": "eap-noob-webserver",
+  "version": "1.0.0",
+  "description": "A simple webserver to receive OOB messages",
+  "main": "index.js",
+  "dependencies": {
+    "express": "^4.17.1",
+    "sqlite3": "^5.0.0"
+  },
+  "devDependencies": {},
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "author": "M Munoz Arcos",
+  "license": "ISC"
+}

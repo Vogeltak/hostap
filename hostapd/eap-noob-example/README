@@ -1,0 +1,25 @@
+This folder contains a number of files necessary for configuring the eap-noob example. 
+
+To run this example do the following:
+1.- Copy all the files in the current folder to the parent folder: "cp *.* ../"
+2.- Navigate to the parent folder
+3.- Generate a .config file with the proper config: "cp defconfig_eap_noob .config"
+4.- run "make clean"  and "make"
+5.- run "sudo ./hostapd ./hostapd.conf"
+6.- In a different terminal navigate to ./webserver folder
+7.- run "npm install"
+8.- run "node index.js"
+
+
+With the steps above we will be running a hostapd server configured to eap-noob and a simple node.js webserver to receive the oob messages.
+
+Important!!:
+
+1.- This server is configured by default to run in interface wlan0, if you need to change the interface do the proper changes in hostapd.conf
+2.- The eapnoob.conf file contains a property called "ServerUrl" it is crucial that this URL is https and that it is reachable by whatever machine you are going
+    to use to deliver the OOB message. In the default configuration it it set to localhost (127.0.0.1) because the default configuration is intented to be run
+    in a standalone machine that has two wifis. "wlan0" will act as a eap-noob server and "wlan1" will act as a eap peer.
+
+The next steps would be navigating to ../../wpa_supplicant/eap-noob-example and reading the README there to configure the peer
+
+-Mmuarc
