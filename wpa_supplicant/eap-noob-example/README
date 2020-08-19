@@ -1,7 +1,6 @@
 This folder contains a number of files necessary for configuring the eap-noob example peer. 
 
-To configure to run this example run: 
-"./configure_eap-noob.sh"
+To configure to run this example run: "./configure_eap-noob.sh"
 
 To build and run wpa_supplicant:
 1.- go to parent folder
