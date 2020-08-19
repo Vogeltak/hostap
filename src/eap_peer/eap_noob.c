@@ -1313,7 +1313,8 @@ static struct wpabuf * eap_noob_process_type_9(struct eap_sm * sm, struct eap_no
 
     resp = eap_noob_build_type_9(data, id);
     data->peer_state = REGISTERED_STATE;
-    eap_noob_config_change(sm, data);
+    //Mmuarc: commented this to disable rewrite of the config
+    //eap_noob_config_change(sm, data);
 
     if (FAILURE == eap_noob_db_update(data, UPDATE_PERSISTENT_STATE)) {
         wpabuf_free(resp); return NULL;
@@ -1446,13 +1447,14 @@ static struct wpabuf * eap_noob_process_type_6(struct eap_sm * sm, struct eap_no
 
     resp = eap_noob_build_type_6(data, id);
     data->peer_state = REGISTERED_STATE;
-    eap_noob_config_change(sm, data);
+    //Mmuarc: Commented this to disable rewrite of the config
+    //eap_noob_config_change(sm, data);
     if (resp == NULL) wpa_printf(MSG_DEBUG, "EAP-NOOB: Null resp 4");
 
     if (FAILURE == eap_noob_update_persistentstate(data)) {
         wpabuf_free(resp); return NULL;
     }
-    wpa_printf(MSG_DEBUG,"PEER ID IS STILL: %s",data->peerid);
+    wpa_printf(MSG_DEBUG,"EAP-NOOB: PEER ID IS STILL: %s",data->peerid);
     return resp;
 }
 
@@ -1533,7 +1535,9 @@ static struct wpabuf * eap_noob_process_type_3(struct eap_sm *sm, struct eap_noo
         // Generate the MAC input string such that it can be used for
         // calculating the Hoob
         data->mac_input_str = eap_noob_build_mac_input(data, data->dirp, data->peer_state);
-        if (SUCCESS == eap_noob_db_update_initial_exchange_info(sm, data)) eap_noob_config_change(sm, data);
+        // MMuarc: commented this to disable rewrite of the config
+        //if (SUCCESS == eap_noob_db_update_initial_exchange_info(sm, data)) eap_noob_config_change(sm, data);
+        eap_noob_db_update_initial_exchange_info(sm, data);
     }
     if (0!= data->minsleep)
         eap_noob_assign_waittime(sm,data);
@@ -2046,7 +2050,7 @@ static int eap_noob_read_config(struct eap_sm *sm, struct eap_noob_data * data)
  * Returns: SUCCESS/FAILURE
 **/
 static int eap_noob_peer_ctxt_init(struct eap_sm * sm,  struct eap_noob_data * data)
-{
+{    
     char * input = NULL;
     const u8 * addr[1];
     size_t len[1];
@@ -2304,7 +2308,8 @@ static bool eap_noob_has_reauth_data(struct eap_sm * sm, void * priv)
         if(!data->realm || os_strlen(data->realm)==0)
             data->realm = os_strdup(DEFAULT_REALM);
         wpa_printf(MSG_DEBUG, "EAP-NOOB: Peer ID and Realm Reauth, %s %s", data->peerid, data->realm);
-        eap_noob_config_change(sm, data); eap_noob_db_update(data, UPDATE_PERSISTENT_STATE);
+        //TODO MMuarc: Commented this to disable rewrite of the config. Also, what's the point in updating with the information we already have?
+        //eap_noob_config_change(sm, data); eap_noob_db_update(data, UPDATE_PERSISTENT_STATE);
         return true;
     }
     wpa_printf(MSG_DEBUG, "EAP-NOOB: Returning False, %s", __func__);

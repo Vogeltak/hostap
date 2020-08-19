@@ -1,0 +1,23 @@
+This folder contains a number of files necessary for configuring the eap-noob example peer. 
+
+To configure to run this example run: "./configure_eap-noob.sh"
+
+To build and run wpa_supplicant:
+1.- go to parent folder
+2.- run "make clean"  and "make"
+3.- run "sudo python3 ./run_eap_full -i wlan1"  (note that you can change to any other wlan interface you want to use as client)
+
+To run the webserver:
+1.- In a different terminal navigate to ./webserver folder
+
+
+With the steps above we will be running a wpa_supplicant configured to eap-noob to connect to a "test" ssid.
+
+Important!!:
+1.- Note that we use wlan1 in the example for the peer. change it to any other wlan interface by replacing the corresponding part
+
+
+The next steps would be navigating to ../../hostapd/eap-noob-example and reading the README there to configure the server
+
+
+-Mmuarc
